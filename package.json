@@ -2,28 +2,57 @@
   "name": "trustbites",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "create-table": "tsc src/create-table.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/create-table.js",
+    "list-tables": "tsc src/list-tables.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/list-tables.js",
+    "test-dynamo": "tsc src/test-dynamo.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/test-dynamo.js",
+    "test-api": "tsc src/test-api.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/test-api.js",
+    "create-schema": "tsc src/create-schema.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/create-schema.js",
+    "test-backend": "tsc src/test-backend.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/test-backend.js",
+    "demo": "tsc src/test-backend.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/test-backend.js --demo",
+    "populate-demo": "tsc src/populate-demo-data.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/populate-demo-data.js"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.891.0",
+    "@aws-sdk/client-comprehend": "^3.893.0",
+    "@aws-sdk/client-dynamodb": "^3.893.0",
+    "@aws-sdk/client-lambda": "^3.893.0",
     "@aws-sdk/client-s3": "^3.892.0",
+    "@aws-sdk/lib-dynamodb": "^3.893.0",
+    "@types/node-fetch": "^2.6.13",
+    "@types/uuid": "^10.0.0",
     "aws-amplify": "^6.15.6",
+    "chart.js": "^4.5.0",
+    "dotenv": "^17.2.2",
     "next": "15.5.3",
+    "node-fetch": "^3.3.2",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "19.1.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/jasmine": "^5.1.9",
+    "@types/node": "^20.19.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jasmine-core": "^5.10.0",
+    "karma": "^6.4.4",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-jasmine": "^5.1.0",
+    "karma-webpack": "^5.0.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "webpack": "^5.101.3",
+    "webpack-dev-server": "^5.2.2"
   }
 }
