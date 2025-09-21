@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '@/bedrock-ai';
+import { getExistingAnalysis, saveAnalyzedReview } from '@/lib/db';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
@@ -8,8 +9,11 @@ export async function GET(
   { params }: { params: { placeId: string } }
 ) {
   const { placeId } = await params;
+  console.log(`🍽️ === RESTAURANT REVIEWS API CALLED ===`);
+  console.log(`🍽️ Place ID: ${placeId}`);
 
   if (!GOOGLE_API_KEY) {
+    console.error(`❌ Google Places API key not configured`);
     return NextResponse.json(
       { error: 'Google Places API not configured' },
       { status: 500 }
@@ -36,9 +40,15 @@ export async function GET(
 
     const place = data.result;
     const reviews = place.reviews || [];
+    console.log(`📋 Found ${reviews.length} reviews for ${place.name}`);
 
     const analyzedReviews = await Promise.all(
-      reviews.map(async (review: any) => {
+      reviews.map(async (review: any, index: number) => {
+        console.log(`\n🔍 Processing review ${index + 1}/${reviews.length} by ${review.author_name}`);
+        
+        // Skip cache lookup for now - just analyze with AI
+        console.log(`🤖 Analyzing new review by ${review.author_name} with AI...`);
+        
         const analysis = await detectFakeReviewWithBedrock({
           reviewId: review.time.toString(),
           reviewText: review.text,
@@ -48,6 +58,36 @@ export async function GET(
           reviewDate: new Date(review.time * 1000).toISOString(),
           restaurantName: place.name || 'Unknown Restaurant'
         }, BEDROCK_MODELS.LLAMA3_70B_INSTRUCT);
+
+        // Save analysis to database (without checking for existing data)
+        try {
+          console.log(`💾 Saving analysis for review by ${review.author_name} to database...`);
+          await saveAnalyzedReview({
+            restaurantId: placeId,
+            reviewId: review.time.toString(),
+            reviewText: review.text,
+            authorName: review.author_name,
+            rating: review.rating,
+            reviewDate: new Date(review.time * 1000).toISOString(),
+            classification: analysis.classification,
+            isFake: analysis.classification === 'fake',
+            confidence: analysis.confidence,
+            sentiment: analysis.sentiment,
+            reasons: analysis.reasons,
+            explanation: analysis.explanation,
+            languageConfidence: analysis.languageConfidence,
+            aiModel: 'bedrock-llama3-70b',
+            aiVersion: '1.0'
+          });
+          console.log(`✅ Successfully saved analysis for review by ${review.author_name}`);
+        } catch (saveError) {
+          console.error(`❌ Failed to save analysis for review by ${review.author_name}:`, saveError);
+          // Continue anyway - the analysis is still valid for display
+        }
+
+        const fromCache = false;
+
+        console.log(`✅ Review by ${review.author_name}: ${analysis.classification} (${fromCache ? 'CACHED' : 'NEW'})`);
 
         return {
           reviewId: review.time.toString(),
@@ -61,7 +101,8 @@ export async function GET(
           sentiment: analysis.sentiment,
           reasons: analysis.reasons,
           explanation: analysis.explanation,
-          languageConfidence: analysis.languageConfidence
+          languageConfidence: analysis.languageConfidence,
+          fromCache
         };
       })
     );
@@ -75,6 +116,9 @@ export async function GET(
     const trustScore = totalReviews > 0 
       ? Math.round(((genuineCount * 1.0 + suspiciousCount * 0.5) / totalReviews) * 100)
       : 0;
+
+    console.log(`📊 Analysis Summary: ${totalReviews} total reviews analyzed`);
+    console.log(`📈 Trust Score: ${trustScore}% (${genuineCount} genuine, ${suspiciousCount} suspicious, ${fakeCount} fake)`);
 
     return NextResponse.json({
       success: true,
@@ -90,9 +134,20 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching reviews:', error);
+    console.error('❌ Error in restaurant reviews API:', error);
+    
+    // Check if it's a specific type of error
+    if (error instanceof Error) {
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch reviews' },
+      { 
+        success: false,
+        error: 'Failed to fetch reviews',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

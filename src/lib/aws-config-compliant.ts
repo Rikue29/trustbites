@@ -21,9 +21,9 @@ export const s3Client = new S3Client({
   credentials,
 });
 
-// DynamoDB - HACKATHON PRIORITY: Malaysia region first!
+// DynamoDB - Use the region from environment variable where table was created
 export const dynamoClient = new DynamoDBClient({
-  region: MALAYSIA_REGION, // HACKATHON: Malaysia region prioritized
+  region: process.env.AWS_REGION || SINGAPORE_REGION, // Use env region (ap-southeast-1)
   credentials,
 });
 
