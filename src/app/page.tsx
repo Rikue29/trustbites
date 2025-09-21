@@ -88,32 +88,15 @@ export default function TrustBitesAI() {
 
   const loadDashboardData = async () => {
     try {
-      // Load dashboard summary
-      const summaryResponse = await fetch('/api/dashboard/summary');
-      const summaryData = await summaryResponse.json();
-      if (summaryData.success) {
-        setDashboardSummary(summaryData.data);
-      }
-
-      // Load trend data
-      const trendResponse = await fetch('/api/dashboard/trends?period=7');
-      const trendDataResult = await trendResponse.json();
-      if (trendDataResult.success) {
-        setTrendData(trendDataResult.data);
-      }
-
-      // Load recent reviews
-      const recentResponse = await fetch('/api/dashboard/recent-reviews?limit=3');
-      const recentData = await recentResponse.json();
-      if (recentData.success) {
-        setRecentReviews(recentData.data);
-      }
-
-      // Load insights
-      const insightsResponse = await fetch('/api/dashboard/insights');
-      const insightsData = await insightsResponse.json();
-      if (insightsData.success) {
-        setInsights(insightsData.data);
+      // Load business-specific data for Blacky CoffeeBar
+      const businessResponse = await fetch('/api/business/blacky-coffeebar/dashboard');
+      const businessData = await businessResponse.json();
+      
+      if (businessData.success) {
+        setDashboardSummary(businessData.summary);
+        setTrendData(businessData.trends);
+        setRecentReviews(businessData.recentReviews);
+        setInsights(businessData.insights);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -150,7 +133,7 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          trustScore: Math.floor(Math.random() * 40) + 60
+          trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
         setSelectedRestaurant(null);
@@ -260,7 +243,6 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          // Remove hardcoded trust score - will be calculated from real analysis
           trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
@@ -371,7 +353,7 @@ export default function TrustBitesAI() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">TrustBites AI</h1>
-                <p className="text-xs text-gray-500">Bites you can trust</p>
+                <p className="text-xs text-gray-500">{currentScreen === 'dashboard' ? 'Blacky CoffeeBar Dashboard' : 'Bites you can trust'}</p>
               </div>
             </div>
             
@@ -448,7 +430,7 @@ export default function TrustBitesAI() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Dashboard
+                Business Dashboard
               </button>
             </div>
           </div>
@@ -647,6 +629,19 @@ export default function TrustBitesAI() {
         {/* Dashboard Screen */}
         {currentScreen === 'dashboard' && (
           <div>
+            {/* Business Owner Header */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <span className="text-2xl">☕</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-black">Blacky CoffeeBar</h2>
+                  <p className="text-sm text-gray-600">Business Owner Dashboard</p>
+                  <p className="text-xs text-gray-500">Taman Sri Serdang, Seri Kembangan</p>
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Key Metrics */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -662,7 +657,7 @@ export default function TrustBitesAI() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600">Average Trust Score</span>
-                      <span className="font-semibold">
+                      <span className="font-semibold text-black">
                         {dashboardSummary ? `${Math.round((dashboardSummary.genuineReviewsCount / dashboardSummary.totalReviews) * 100)}%` : '74%'}
                       </span>
                     </div>
@@ -736,7 +731,7 @@ export default function TrustBitesAI() {
                           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                             <span className="text-xs font-medium">JD</span>
                           </div>
-                          <span className="font-medium">john_doe_123</span>
+                          <span className="font-medium text-black">john_doe_123</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -756,7 +751,7 @@ export default function TrustBitesAI() {
                           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                             <span className="text-xs font-medium">SF</span>
                           </div>
-                          <span className="font-medium">sarah_foodie</span>
+                          <span className="font-medium text-black">sarah_foodie</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -868,30 +863,32 @@ export default function TrustBitesAI() {
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">🍕</span>
+                      <span className="text-lg">☕</span>
                     </div>
                     <div>
-                      <div className="font-semibold">Bella Italia</div>
-                      <div className="text-sm text-gray-500">Your Restaurant</div>
+                      <div className="font-semibold text-black">Blacky CoffeeBar</div>
+                      <div className="text-sm text-gray-500">Your Business</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-green-600">73%</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {dashboardSummary ? `${Math.round((dashboardSummary.genuineReviewsCount / dashboardSummary.totalReviews) * 100)}%` : '77%'}
+                    </div>
                     <div className="text-sm text-gray-500">Trust Score</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">🍕</span>
+                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">☕</span>
                     </div>
                     <div>
-                      <div className="font-semibold">Tony's Pizza</div>
+                      <div className="font-semibold text-black">Coffee Bean & Tea Leaf</div>
                       <div className="text-sm text-gray-500">Competitor</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-red-600">45%</div>
+                    <div className="text-lg font-bold text-yellow-600">62%</div>
                     <div className="text-sm text-gray-500">Trust Score</div>
                   </div>
                 </div>
