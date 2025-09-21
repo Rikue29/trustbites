@@ -177,12 +177,10 @@ export default function TrustBitesAI() {
     return '🍽️';
   };
 
-  const analyzeReviews = async () => {
-    if (!selectedRestaurant) return;
-    
+  const analyzeReviews = async (restaurant: Restaurant) => {
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`/api/restaurants/${selectedRestaurant.placeId}/reviews`);
+      const response = await fetch(`/api/restaurants/${restaurant.placeId}/reviews`);
       const data = await response.json();
       
       if (data.success) {
@@ -196,16 +194,15 @@ export default function TrustBitesAI() {
       setTimeout(() => {
         setShowAnalysis(true);
         setIsAnalyzing(false);
+        // Auto-scroll to reviews section
+        setTimeout(() => {
+          reviewsRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       }, 2500);
     } catch (error) {
       console.error('Error analyzing reviews:', error);
       setIsAnalyzing(false);
     }
-  };
-
-  const analyzeRestaurant = (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant);
-    analyzeReviews();
   };
 
   const handleSuggestionClick = (suggestion: any) => {
@@ -474,7 +471,8 @@ export default function TrustBitesAI() {
                     // Reset analysis state when selecting a new restaurant
                     setShowAnalysis(false);
                     setReviews([]);
-                    setIsAnalyzing(false);
+                    // Auto-analyze when restaurant is selected
+                    analyzeReviews(restaurant);
                   }}
                 />
                 
@@ -538,31 +536,14 @@ export default function TrustBitesAI() {
                     </div>
                   </div>
                   
-                  {!showAnalysis && (
-                    <button 
-                      onClick={analyzeReviews}
-                      disabled={isAnalyzing}
-                      className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 mb-4"
-                    >
-                      <span className="flex items-center justify-center space-x-2">
-                        {isAnalyzing ? (
-                          <>
-                            <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Analyzing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <span>Analyze Reviews</span>
-                          </>
-                        )}
-                      </span>
-                    </button>
+                  {isAnalyzing && (
+                    <div className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold mb-4 flex items-center justify-center space-x-2">
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Analyzing Reviews...</span>
+                    </div>
                   )}
                   
                                     <div className="flex-1 overflow-y-auto bg-white">
