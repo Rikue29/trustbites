@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addReview, listReviews } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
+import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '../../../bedrock-ai';
 
 export async function GET() {
   try {
@@ -17,7 +18,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { restaurantId, reviewText } = await request.json();
+    const { restaurantId, reviewText, authorName, rating } = await request.json();
 
     // Validate input
     if (!restaurantId || !reviewText) {
@@ -30,36 +31,75 @@ export async function POST(request: NextRequest) {
     // Generate unique review ID
     const reviewId = uuidv4();
 
-    // AWS Comprehend-powered fake detection
-    const analysis = await detectFakeReview(reviewText);
+    console.log(`🔍 Analyzing new review submission: ${reviewId}`);
+
+    // Use advanced Bedrock AI for fake detection (Llama 3 70B)
+    const analysis = await detectFakeReviewWithBedrock({
+      reviewId,
+      reviewText,
+      rating: rating || 5,
+      language: 'en', // Default to English, can be enhanced with language detection
+      authorName: authorName || 'Anonymous',
+      reviewDate: new Date().toISOString(),
+      restaurantName: `Restaurant ${restaurantId}`
+    }, BEDROCK_MODELS.LLAMA3_70B_INSTRUCT);
+
+    // Map new classification to legacy isFake for database compatibility
+    const isFake = analysis.classification === 'fake';
+    
+    console.log(`🤖 Bedrock analysis result: ${analysis.classification.toUpperCase()} (${analysis.confidence})`);
 
     // Store in DynamoDB with enhanced data
     const review = await addReview({
       reviewId,
       restaurantId,
       reviewText,
-      isFake: analysis.isFake,
+      authorName: authorName || 'Anonymous',
+      rating: rating || 5,
+      isFake: isFake,
       sentiment: analysis.sentiment,
-      language: analysis.language,
-      confidence: analysis.confidence
+      language: 'en',
+      confidence: analysis.confidence,
+      reasons: analysis.reasons
     });
 
     return NextResponse.json({
       success: true,
       review,
       analysis: {
-        isFake: analysis.isFake,
+        classification: analysis.classification,
+        isFake: isFake,
         confidence: analysis.confidence,
         sentiment: analysis.sentiment,
-        language: analysis.language,
-        reason: analysis.explanation
+        language: 'en',
+        reasons: analysis.reasons,
+        explanation: `AI Analysis: ${analysis.classification === 'fake' ? 'Potential fake review detected' : analysis.classification === 'suspicious' ? 'Review flagged as suspicious' : 'Review appears genuine'}. ${analysis.reasons.length > 0 ? 'Concerns: ' + analysis.reasons.join(', ') : 'No major concerns identified.'}`
       }
     });
 
   } catch (error) {
-    console.error('Error processing review:', error);
+    console.error('Error in POST /api/reviews:', error);
+    
+    // Fallback: still store the review but without AI analysis
+    const fallbackReview = await addReview({
+      reviewId: `review_${Date.now()}`,
+      restaurantId: 'unknown',
+      reviewText: 'Error processing review',
+      authorName: 'Anonymous',
+      rating: 3,
+      isFake: false,
+      sentiment: 'NEUTRAL',
+      language: 'en',
+      confidence: 0,
+      reasons: ['Error in AI analysis']
+    });
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Failed to analyze review', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        review: fallbackReview
+      },
       { status: 500 }
     );
   }
