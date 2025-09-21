@@ -41,7 +41,7 @@ export default function GoogleMap({ restaurants, onPlaceSelect }: GoogleMapProps
 
       window.initMap = initializeMap;
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyB_cVKxLR2idCaCFLdDavry-pDF6BhNgiQ&libraries=places&callback=initMap`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
       script.async = true;
       document.head.appendChild(script);
     };
