@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { businessId: string } }
+  { params }: { params: Promise<{ businessId: string }> }
 ) {
-  const { businessId } = params;
+  const { businessId } = await params;
 
   try {
     // Mock data for Blacky CoffeeBar - replace with real database queries

@@ -1,0 +1,46 @@
+version: 1
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci --cache .npm --prefer-offline
+            - echo "Verifying AWS services and environment..."
+            - npm run verify-aws-setup
+        build:
+          commands:
+            - echo "Building TrustBites application..."
+            - npm run build:prod
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .npm/**/*
+          - node_modules/**/*
+          - .next/cache/**/*
+    appRoot: /
+    buildSpec: |
+      version: 1
+      applications:
+        - frontend:
+            phases:
+              preBuild:
+                commands:
+                  - npm ci
+                  - echo "Checking AWS credentials..."
+                  - aws sts get-caller-identity
+                  - echo "Verifying DynamoDB tables..."
+                  - node verify-aws-services.js
+              build:
+                commands:
+                  - npm run build
+            artifacts:
+              baseDirectory: .next
+              files:
+                - '**/*'
+            cache:
+              paths:
+                - node_modules/**/*
+                - .next/cache/**/*
