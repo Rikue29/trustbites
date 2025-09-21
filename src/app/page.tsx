@@ -91,6 +91,8 @@ export default function TrustBitesAI() {
   };
 
   const getEmojiForCuisine = (types: string[]) => {
+    if (!types || types.length === 0) return '🍽️';
+    
     const typeStr = types.join(' ').toLowerCase();
     if (typeStr.includes('pizza') || typeStr.includes('italian')) return '🍕';
     if (typeStr.includes('burger') || typeStr.includes('american')) return '🍔';
@@ -102,6 +104,8 @@ export default function TrustBitesAI() {
     if (typeStr.includes('thai')) return '🍜';
     if (typeStr.includes('bakery') || typeStr.includes('dessert')) return '🧁';
     if (typeStr.includes('bar') || typeStr.includes('pub')) return '🍺';
+    if (typeStr.includes('fast_food')) return '🍔';
+    if (typeStr.includes('meal_takeaway')) return '🥡';
     return '🍽️';
   };
 

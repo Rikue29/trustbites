@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 
 // Simple price formatting function
@@ -19,15 +19,21 @@ function formatPriceRange(priceLevel: number | undefined) {
 }
 
 export async function GET(request: NextRequest) {
+  console.log('=== Restaurant Search API Called ===');
+  console.log('GOOGLE_API_KEY present:', !!GOOGLE_API_KEY);
+  
   const { searchParams } = new URL(request.url);
   const location = searchParams.get('location');
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');
   const query = searchParams.get('query') || 'restaurant';
-  const radius = searchParams.get('radius') || '1000'; // 1km default
-  const maxPrice = searchParams.get('maxPrice'); // Optional price filter (0-4)
+  const radius = searchParams.get('radius') || '1000';
+  const maxPrice = searchParams.get('maxPrice');
+  
+  console.log('Request params:', { location, lat, lng, radius });
 
   if (!location && (!lat || !lng)) {
+    console.log('Missing location parameters');
     return NextResponse.json(
       { error: 'Location parameter or coordinates are required' },
       { status: 400 }
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!GOOGLE_API_KEY) {
+    console.log('Missing Google API key');
     return NextResponse.json(
       { error: 'Google Places API not configured' },
       { status: 500 }
@@ -74,13 +81,20 @@ export async function GET(request: NextRequest) {
       type: 'restaurant',
       key: GOOGLE_API_KEY
     });
+    
+    const fullUrl = `${searchUrl}?${searchParams}`;
+    console.log('Google Places API URL:', fullUrl.replace(GOOGLE_API_KEY, 'API_KEY_HIDDEN'));
 
-    const searchResponse = await fetch(`${searchUrl}?${searchParams}`);
+    const searchResponse = await fetch(fullUrl);
+    console.log('Google API response status:', searchResponse.status);
+    
     const searchData = await searchResponse.json();
+    console.log('Google API response:', { status: searchData.status, results_count: searchData.results?.length });
 
     if (searchData.status !== 'OK') {
+      console.log('Google API error details:', searchData);
       return NextResponse.json(
-        { error: `Google Places API error: ${searchData.status}` },
+        { error: `Google Places API error: ${searchData.status}`, details: searchData.error_message },
         { status: 500 }
       );
     }

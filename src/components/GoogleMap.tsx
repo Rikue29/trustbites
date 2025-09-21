@@ -75,6 +75,10 @@ export default function GoogleMap({ restaurants, onPlaceSelect }: GoogleMapProps
     markersRef.current = [];
 
     restaurants.forEach((restaurant) => {
+      const emoji = restaurant.emoji || '🍽️';
+      const trustScore = restaurant.trustScore || 70;
+      const color = trustScore >= 80 ? '#10b981' : trustScore >= 60 ? '#f59e0b' : '#ef4444';
+      
       const marker = new window.google.maps.Marker({
         position: restaurant.location,
         map: mapInstanceRef.current,
@@ -82,11 +86,8 @@ export default function GoogleMap({ restaurants, onPlaceSelect }: GoogleMapProps
         icon: {
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
             <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="18" fill="${
-                restaurant.trustScore && restaurant.trustScore >= 80 ? '#10b981' :
-                restaurant.trustScore && restaurant.trustScore >= 60 ? '#f59e0b' : '#ef4444'
-              }" stroke="white" stroke-width="2"/>
-              <text x="20" y="26" text-anchor="middle" font-size="16" fill="white">${restaurant.emoji || '🍽️'}</text>
+              <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
+              <text x="20" y="26" text-anchor="middle" font-size="16" fill="white">${emoji}</text>
             </svg>
           `)}`,
           scaledSize: new window.google.maps.Size(40, 40)
