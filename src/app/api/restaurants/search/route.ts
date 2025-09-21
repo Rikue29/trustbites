@@ -63,27 +63,33 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the results for your frontend
-    const restaurants = searchData.results.map((place: any) => ({
-      placeId: place.place_id,
-      name: place.name,
-      address: place.vicinity || place.formatted_address,
-      location: {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng
-      },
-      rating: place.rating || 0,
-      totalReviews: place.user_ratings_total || 0,
-      priceLevel: place.price_level,
-      cuisine: place.types?.filter((type: string) => 
-        !['establishment', 'point_of_interest', 'food'].includes(type)
-      )[0] || 'restaurant',
-      isOpen: place.opening_hours?.open_now,
-      photos: place.photos?.slice(0, 3).map((photo: any) => ({
-        reference: photo.photo_reference,
-        width: photo.width,
-        height: photo.height
-      })) || []
-    }));
+    const restaurants = searchData.results.map((place: any) => {
+      const cuisineTypes = place.types?.filter((type: string) => 
+        !['establishment', 'point_of_interest', 'food', 'store', 'restaurant'].includes(type)
+      ) || [];
+      
+      return {
+        placeId: place.place_id,
+        name: place.name,
+        address: place.vicinity || place.formatted_address,
+        location: {
+          lat: place.geometry.location.lat,
+          lng: place.geometry.location.lng
+        },
+        rating: place.rating || 0,
+        totalReviews: place.user_ratings_total || 0,
+        priceLevel: place.price_level,
+        cuisine: cuisineTypes[0] || 'restaurant',
+        types: place.types || [],
+        isOpen: place.opening_hours?.open_now,
+        photos: place.photos?.slice(0, 3).map((photo: any) => ({
+          reference: photo.photo_reference,
+          width: photo.width,
+          height: photo.height,
+          url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
+        })) || []
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -91,7 +97,7 @@ export async function GET(request: NextRequest) {
         query: location,
         coordinates: { lat, lng }
       },
-      restaurants,
+      restaurants: restaurants.slice(0, 20), // Limit to 20 restaurants
       total: restaurants.length
     });
 
