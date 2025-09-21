@@ -99,10 +99,10 @@ In the Amplify console, add these environment variables:
 
 #### Required Variables:
 ```bash
-# AWS Configuration
-AWS_ACCESS_KEY_ID=your_access_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_key_here
-AWS_REGION=ap-southeast-1
+# AWS Configuration (Note: Use TRUSTBITES_ prefix, not AWS_)
+TRUSTBITES_ACCESS_KEY_ID=your_access_key_here
+TRUSTBITES_SECRET_ACCESS_KEY=your_secret_key_here
+TRUSTBITES_AWS_REGION=ap-southeast-1
 BEDROCK_REGION=us-east-1
 
 # Google Maps

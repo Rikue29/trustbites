@@ -28,9 +28,9 @@
 - [ ] Repository connected to Amplify
 - [ ] Build settings configured (amplify.yml detected)
 - [ ] Environment variables set:
-  - [ ] AWS_ACCESS_KEY_ID
-  - [ ] AWS_SECRET_ACCESS_KEY
-  - [ ] AWS_REGION (ap-southeast-1)
+  - [ ] TRUSTBITES_ACCESS_KEY_ID
+  - [ ] TRUSTBITES_SECRET_ACCESS_KEY
+  - [ ] TRUSTBITES_AWS_REGION (ap-southeast-1)
   - [ ] BEDROCK_REGION (us-east-1)
   - [ ] GOOGLE_MAPS_API_KEY
   - [ ] NEXTAUTH_SECRET
