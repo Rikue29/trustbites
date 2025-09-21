@@ -178,7 +178,7 @@ export async function saveAnalyzedReview(analysis: {
     restaurantId: analysis.restaurantId,
     authorName: analysis.authorName,
     classification: analysis.classification,
-    region: process.env.AWS_REGION
+    region: process.env.TRUSTBITES_AWS_REGION
   });
 
   try {
@@ -194,7 +194,7 @@ export async function saveAnalyzedReview(analysis: {
     console.error(`❌ Error details:`, {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : String(error),
-      region: process.env.AWS_REGION,
+      region: process.env.TRUSTBITES_AWS_REGION,
       tableName: "AnalyzedReviews"
     });
     

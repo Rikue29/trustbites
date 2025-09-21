@@ -11,8 +11,8 @@ const MALAYSIA_REGION = 'ap-southeast-5';
 const SINGAPORE_REGION = 'ap-southeast-1'; // Only for unavailable services
 
 const credentials = {
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  accessKeyId: process.env.TRUSTBITES_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.TRUSTBITES_SECRET_ACCESS_KEY!,
 };
 
 // Primary services in Malaysia
@@ -23,7 +23,7 @@ export const s3Client = new S3Client({
 
 // DynamoDB - Use the region from environment variable where table was created
 export const dynamoClient = new DynamoDBClient({
-  region: process.env.AWS_REGION || SINGAPORE_REGION, // Use env region (ap-southeast-1)
+  region: process.env.TRUSTBITES_AWS_REGION || SINGAPORE_REGION, // Use env region (ap-southeast-1)
   credentials,
 });
 
