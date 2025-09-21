@@ -53,13 +53,18 @@ Analyze for these fake review indicators:
 
 Provide your analysis in this EXACT JSON format:
 {{
-  "isFake": true/false,
+  "classification": "genuine|suspicious|fake",
   "confidence": 0.0-1.0,
   "reasons": ["reason1", "reason2"],
-  "sentiment": "positive/negative/neutral",
+  "sentiment": "positive|negative|neutral",
   "languageConfidence": 0.0-1.0,
   "explanation": "Brief explanation of your decision"
 }}
+
+Classification Guidelines:
+- "genuine": Review appears authentic with specific details and natural language
+- "suspicious": Review has some concerning elements but not definitively fake
+- "fake": Review shows clear signs of being artificially generated or incentivized
 
 Be thorough but concise. Consider cultural context for Malaysian/English reviews."""
     
@@ -130,11 +135,28 @@ def print_analysis_result(result, review_text):
     if result['success']:
         analysis = result['analysis']
         
-        # Main result
-        fake_status = "🚩 FAKE" if analysis['isFake'] else "✅ GENUINE"
+        # Main result with three-way classification
+        classification = analysis.get('classification', 'unknown').upper()
+        if classification == 'FAKE':
+            status_emoji = "🚩 FAKE"
+            color_code = "\033[91m"  # Red
+        elif classification == 'SUSPICIOUS':
+            status_emoji = "⚠️ SUSPICIOUS"
+            color_code = "\033[93m"  # Yellow
+        elif classification == 'GENUINE':
+            status_emoji = "✅ GENUINE"
+            color_code = "\033[92m"  # Green
+        else:
+            # Fallback for old format
+            fake_status = "🚩 FAKE" if analysis.get('isFake', False) else "✅ GENUINE"
+            status_emoji = fake_status
+            classification = "FAKE" if analysis.get('isFake', False) else "GENUINE"
+            color_code = "\033[91m" if analysis.get('isFake', False) else "\033[92m"
+        
+        reset_color = "\033[0m"
         confidence = analysis['confidence'] * 100
         
-        print(f"\n🎯 Result: {fake_status}")
+        print(f"\n🎯 Result: {color_code}{status_emoji}{reset_color}")
         print(f"📊 Confidence: {confidence:.1f}%")
         print(f"😊 Sentiment: {analysis['sentiment'].upper()}")
         print(f"🗣️  Language Confidence: {analysis.get('languageConfidence', 0) * 100:.1f}%")
@@ -151,10 +173,12 @@ def print_analysis_result(result, review_text):
         
         # Overall assessment
         print(f"\n🎭 Assessment:")
-        if analysis['isFake']:
-            print("   This review shows signs of being artificially generated or fake.")
-        else:
-            print("   This review appears to be a genuine customer experience.")
+        if classification == 'GENUINE':
+            print("   This review appears to be written by a real customer with authentic experiences.")
+        elif classification == 'SUSPICIOUS':
+            print("   This review has some concerning elements that warrant further investigation.")
+        elif classification == 'FAKE':
+            print("   This review shows strong indicators of being artificially generated or incentivized.")
         
     else:
         print(f"\n❌ Analysis failed: {result['error']}")

@@ -16,7 +16,7 @@ interface Restaurant {
   totalReviews: number;
   emoji?: string;
   trustScore?: number;
-  photos?: { url: string; reference: string; width: number; height: number }[];
+  photos?: { url: string; reference?: string; width?: number; height?: number }[];
   types?: string[];
 }
 
@@ -27,9 +27,30 @@ interface Review {
   rating?: number;
   time?: number;
   isFake: boolean;
+  classification?: 'genuine' | 'suspicious' | 'fake';
   confidence: number;
   sentiment: string;
   reason?: string;
+  reasons?: string[];
+  explanation?: string;
+  languageConfidence?: number;
+}
+
+interface DashboardSummary {
+  totalReviews: number;
+  totalFakeReviews: number;
+  fakeReviewPercentage: number;
+  averageRating: number;
+  recentReviewsCount: number;
+  totalRestaurants: number;
+  genuineReviewsCount: number;
+}
+
+interface TrendData {
+  period: number;
+  totalReviews: number;
+  fakeReviewRatioOverTime: { date: string; ratio: number }[];
+  volumeOverTime: { date: string; volume: number }[];
 }
 
 export default function TrustBitesAI() {
@@ -40,10 +61,51 @@ export default function TrustBitesAI() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [searchQuery, setSearchQuery] = useState('Kuala Lumpur');
+  
+  // Dashboard data states
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [trendData, setTrendData] = useState<TrendData | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
   useEffect(() => {
     searchRestaurants('Kuala Lumpur');
+    // Load dashboard data when component mounts
+    if (currentScreen === 'dashboard') {
+      loadDashboardData();
+    }
   }, []);
+
+  useEffect(() => {
+    // Load dashboard data when switching to dashboard
+    if (currentScreen === 'dashboard' && !dashboardSummary) {
+      loadDashboardData();
+    }
+  }, [currentScreen]);
+
+  const loadDashboardData = async () => {
+    setIsLoadingDashboard(true);
+    try {
+      // Fetch dashboard summary
+      const summaryResponse = await fetch('/api/dashboard/summary');
+      const summaryData = await summaryResponse.json();
+      
+      if (summaryData.success) {
+        setDashboardSummary(summaryData.data);
+      }
+
+      // Fetch trend data
+      const trendsResponse = await fetch('/api/dashboard/trends?period=7');
+      const trendsData = await trendsResponse.json();
+      
+      if (trendsData.success) {
+        setTrendData(trendsData.data);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoadingDashboard(false);
+    }
+  };
 
   const getEmojiForCuisine = (types: string[]) => {
     const typeStr = types.join(' ').toLowerCase();
@@ -98,7 +160,8 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          trustScore: Math.floor(Math.random() * 40) + 60
+          // Remove hardcoded trust score - will be calculated from real analysis
+          trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
         setSelectedRestaurant(null);
@@ -108,25 +171,76 @@ export default function TrustBitesAI() {
     }
   };
 
+  // Generate chart data from real dashboard data
   const pieChartData = {
     labels: ['Genuine', 'Suspicious', 'Fake'],
     datasets: [{
-      data: [60, 25, 15],
+      data: dashboardSummary ? [
+        dashboardSummary.genuineReviewsCount,
+        Math.max(0, dashboardSummary.totalReviews - dashboardSummary.genuineReviewsCount - dashboardSummary.totalFakeReviews), // Suspicious
+        dashboardSummary.totalFakeReviews
+      ] : [60, 25, 15], // Fallback values
       backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
       borderWidth: 0
     }]
   };
 
+  const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const value = context.parsed;
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            return `${context.label}: ${percentage}% (${value.toLocaleString()} reviews)`;
+          }
+        }
+      }
+    }
+  };
+
   const trendChartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: trendData?.fakeReviewRatioOverTime?.map(item => {
+      const date = new Date(item.date);
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }) || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
       label: 'Fake Reviews Detected',
-      data: [12, 8, 15, 6, 9, 18, 11],
+      data: trendData?.fakeReviewRatioOverTime?.map(item => Math.round(item.ratio * 100)) || [12, 8, 15, 6, 9, 18, 11],
       borderColor: '#ef4444',
       backgroundColor: 'rgba(239, 68, 68, 0.1)',
       tension: 0.4,
       fill: true
     }]
+  };
+
+  const trendChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            return `Fake Reviews: ${context.parsed.y}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value: any) {
+            return value + '%';
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -323,7 +437,13 @@ export default function TrustBitesAI() {
               {showAnalysis && selectedRestaurant && (
                 <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h4 className="text-lg font-bold text-gray-900">AI Analysis Results</h4>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-lg font-bold text-gray-900">AI Analysis Results</h4>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></div>
+                        Bedrock AI
+                      </span>
+                    </div>
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                   </div>
                   
@@ -333,20 +453,54 @@ export default function TrustBitesAI() {
                       <div className="w-full h-full rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 p-3">
                         <div className="w-full h-full bg-white rounded-full flex items-center justify-center shadow-inner">
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-900">{selectedRestaurant.trustScore}</div>
+                            <div className="text-2xl font-bold text-gray-900">
+                              {reviews.length > 0 
+                                ? Math.round(100 - (reviews.filter(r => 
+                                    r.classification === 'fake' || 
+                                    r.classification === 'suspicious' || 
+                                    (!r.classification && r.isFake)
+                                  ).length / reviews.length) * 100)
+                                : (selectedRestaurant?.trustScore || 85)
+                              }
+                            </div>
                             <div className="text-xs text-gray-500 font-medium">Trust Score</div>
                           </div>
                         </div>
                       </div>
                     </div>
                     <p className={`text-sm font-medium ${
-                      selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 80 ? 'text-green-600' :
-                      selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 60 ? 'text-yellow-600' :
-                      'text-red-600'
+                      reviews.length > 0 
+                        ? (100 - (reviews.filter(r => 
+                            r.classification === 'fake' || 
+                            r.classification === 'suspicious' || 
+                            (!r.classification && r.isFake)
+                          ).length / reviews.length) * 100) >= 80 ? 'text-green-600' :
+                          (100 - (reviews.filter(r => 
+                            r.classification === 'fake' || 
+                            r.classification === 'suspicious' || 
+                            (!r.classification && r.isFake)
+                          ).length / reviews.length) * 100) >= 60 ? 'text-yellow-600' :
+                          'text-red-600'
+                        : selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 80 ? 'text-green-600' :
+                          selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 60 ? 'text-yellow-600' :
+                          'text-red-600'
                     }`}>
-                      {selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 80 ? 'Highly Trustworthy' :
-                       selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 60 ? 'Moderately Trustworthy' :
-                       'Low Trust'}
+                      {reviews.length > 0 
+                        ? (100 - (reviews.filter(r => 
+                            r.classification === 'fake' || 
+                            r.classification === 'suspicious' || 
+                            (!r.classification && r.isFake)
+                          ).length / reviews.length) * 100) >= 80 ? 'Highly Trustworthy' :
+                          (100 - (reviews.filter(r => 
+                            r.classification === 'fake' || 
+                            r.classification === 'suspicious' || 
+                            (!r.classification && r.isFake)
+                          ).length / reviews.length) * 100) >= 60 ? 'Moderately Trustworthy' :
+                          'Low Trust'
+                        : selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 80 ? 'Highly Trustworthy' :
+                          selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 60 ? 'Moderately Trustworthy' :
+                          'Low Trust'
+                      }
                     </p>
                   </div>
 
@@ -354,63 +508,205 @@ export default function TrustBitesAI() {
                   <div className="mb-6">
                     <h5 className="font-semibold text-gray-900 mb-3">Review Distribution</h5>
                     <div className="h-48 mb-4">
-                      <Doughnut data={pieChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                      {reviews.length > 0 ? (
+                        <Doughnut 
+                          data={{
+                            labels: ['Genuine', 'Suspicious', 'Fake'],
+                            datasets: [{
+                              data: [
+                                reviews.filter(r => r.classification === 'genuine' || (!r.classification && !r.isFake)).length,
+                                reviews.filter(r => r.classification === 'suspicious' || (!r.classification && r.isFake && r.confidence < 0.8)).length,
+                                reviews.filter(r => r.classification === 'fake' || (!r.classification && r.isFake && r.confidence >= 0.8)).length
+                              ],
+                              backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                              borderWidth: 0
+                            }]
+                          }} 
+                          options={{ 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            plugins: { 
+                              legend: { display: false },
+                              tooltip: {
+                                callbacks: {
+                                  label: function(context: any) {
+                                    const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${context.label}: ${percentage}% (${value} reviews)`;
+                                  }
+                                }
+                              }
+                            } 
+                          }} 
+                        />
+                      ) : (
+                        <Doughnut 
+                          data={pieChartData} 
+                          options={pieChartOptions} 
+                        />
+                      )}
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="text-center">
                         <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
                         <div className="font-medium">Genuine</div>
-                        <div className="text-gray-500">60%</div>
+                        <div className="text-gray-500">
+                          {reviews.length > 0 
+                            ? `${Math.round((reviews.filter(r => r.classification === 'genuine' || (!r.classification && !r.isFake)).length / reviews.length) * 100)}%`
+                            : '60%'
+                          }
+                        </div>
                       </div>
                       <div className="text-center">
                         <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
                         <div className="font-medium">Suspicious</div>
-                        <div className="text-gray-500">25%</div>
+                        <div className="text-gray-500">
+                          {reviews.length > 0 
+                            ? `${Math.round((reviews.filter(r => r.classification === 'suspicious' || (!r.classification && r.isFake && r.confidence < 0.8)).length / reviews.length) * 100)}%`
+                            : '25%'
+                          }
+                        </div>
                       </div>
                       <div className="text-center">
                         <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-1"></div>
                         <div className="font-medium">Fake</div>
-                        <div className="text-gray-500">15%</div>
+                        <div className="text-gray-500">
+                          {reviews.length > 0 
+                            ? `${Math.round((reviews.filter(r => r.classification === 'fake' || (!r.classification && r.isFake && r.confidence >= 0.8)).length / reviews.length) * 100)}%`
+                            : '15%'
+                          }
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Review List */}
                   <div>
-                    <h5 className="font-semibold text-gray-900 mb-3">Recent Reviews</h5>
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-gray-900">Recent Reviews</h5>
+                      {reviews.length > 0 && (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                          {reviews.length} reviews analyzed by AI
+                        </span>
+                      )}
+                    </div>
                     <div className="space-y-3 max-h-80 overflow-y-auto">
                       {reviews.map((review, index) => (
                         <div key={review.reviewId || index} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                          {/* Header with classification and confidence */}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center space-x-2">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                                review.isFake === false ? 'bg-green-100 text-green-800 border-green-200' :
-                                review.confidence > 0.7 ? 'bg-red-100 text-red-800 border-red-200' :
-                                'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                // Use new classification if available, otherwise fall back to old logic
+                                review.classification === 'genuine' || (!review.classification && !review.isFake) ? 'bg-green-100 text-green-800 border-green-200' :
+                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                'bg-red-100 text-red-800 border-red-200'
                               }`}>
-                                {review.isFake === false ? '✅ Genuine' : 
-                                 review.confidence > 0.7 ? '❌ Fake' : '⚠️ Suspicious'}
+                                {review.classification === 'genuine' || (!review.classification && !review.isFake) ? '✅ Genuine' : 
+                                 review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? '⚠️ Suspicious' :
+                                 '❌ Fake'}
                               </span>
                               <span className={`text-xs font-medium ${
-                                review.isFake === false ? 'text-green-600' :
-                                review.confidence > 0.7 ? 'text-red-600' : 'text-yellow-600'
+                                review.classification === 'genuine' || (!review.classification && !review.isFake) ? 'text-green-600' :
+                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? 'text-yellow-600' :
+                                'text-red-600'
                               }`}>
                                 {Math.round(review.confidence * 100)}% confidence
                               </span>
                             </div>
                           </div>
+
+                          {/* Author and rating info */}
                           {review.authorName && (
-                            <div className="flex items-center space-x-2 mb-2">
-                              <span className="text-xs font-medium text-gray-600">{review.authorName}</span>
-                              {review.rating && (
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-yellow-400">⭐</span>
-                                  <span className="text-xs text-gray-600">{review.rating}</span>
-                                </div>
-                              )}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs font-medium text-gray-600">{review.authorName}</span>
+                                {review.rating && (
+                                  <div className="flex items-center space-x-1">
+                                    <span className="text-yellow-400">⭐</span>
+                                    <span className="text-xs text-gray-600">{review.rating}</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-3 text-xs text-gray-500">
+                                <span className="flex items-center space-x-1">
+                                  <span>😊</span>
+                                  <span>{review.sentiment}</span>
+                                </span>
+                                {review.languageConfidence && (
+                                  <span className="flex items-center space-x-1">
+                                    <span>🗣️</span>
+                                    <span>{Math.round(review.languageConfidence * 100)}%</span>
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           )}
-                          <p className="text-sm text-gray-700 leading-relaxed">{review.reviewText}</p>
+
+                          {/* Review text */}
+                          <p className="text-sm text-gray-700 leading-relaxed mb-3">{review.reviewText}</p>
+
+                          {/* AI Analysis Explanation */}
+                          {review.explanation && (
+                            <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                              <div className="text-xs font-medium text-blue-800 mb-1 flex items-center space-x-1">
+                                <span>🤖</span>
+                                <span>AI Analysis:</span>
+                              </div>
+                              <div className="text-xs text-blue-700 leading-relaxed">
+                                {review.explanation}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Detection reasons for fake and suspicious reviews */}
+                          {(review.classification === 'fake' || review.classification === 'suspicious' || 
+                            (!review.classification && review.isFake)) && (review.reasons || review.reason) && (
+                            <div className={`p-3 rounded-lg border ${
+                              review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
+                                ? 'bg-yellow-50 border-yellow-100'
+                                : 'bg-red-50 border-red-100'
+                            }`}>
+                              <div className={`text-xs font-medium mb-2 flex items-center space-x-1 ${
+                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
+                                  ? 'text-yellow-800'
+                                  : 'text-red-800'
+                              }`}>
+                                <span>⚠️</span>
+                                <span>Detection Indicators:</span>
+                              </div>
+                              <div className={`text-xs ${
+                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
+                                  ? 'text-yellow-700'
+                                  : 'text-red-700'
+                              }`}>
+                                {Array.isArray(review.reasons) 
+                                  ? (
+                                    <ul className="list-disc list-inside space-y-1">
+                                      {review.reasons.map((reason, idx) => (
+                                        <li key={idx}>{reason.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>
+                                      ))}
+                                    </ul>
+                                  )
+                                  : review.reason
+                                }
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Assessment for genuine reviews */}
+                          {(review.classification === 'genuine' || (!review.classification && !review.isFake)) && (
+                            <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
+                              <div className="text-xs font-medium text-green-800 mb-1 flex items-center space-x-1">
+                                <span>✅</span>
+                                <span>Assessment:</span>
+                              </div>
+                              <div className="text-xs text-green-700">
+                                This review appears to be written by a real customer with authentic experiences.
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -424,6 +720,24 @@ export default function TrustBitesAI() {
         {/* Dashboard Screen */}
         {currentScreen === 'dashboard' && (
           <div>
+            {/* Dashboard Header with Refresh Button */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">AI Analytics Dashboard</h2>
+                <p className="text-gray-600">Real-time fake review detection insights</p>
+              </div>
+              <button
+                onClick={loadDashboardData}
+                disabled={isLoadingDashboard}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                <svg className={`w-4 h-4 ${isLoadingDashboard ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                <span>{isLoadingDashboard ? 'Refreshing...' : 'Refresh Data'}</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Key Metrics */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -435,46 +749,105 @@ export default function TrustBitesAI() {
                     </svg>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Average Trust Score</span>
-                      <span className="font-semibold">74%</span>
+                
+                {isLoadingDashboard ? (
+                  <div className="space-y-4 animate-pulse">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <div className="h-4 bg-gray-200 rounded w-24"></div>
+                        <div className="h-4 bg-gray-200 rounded w-12"></div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2"></div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full" style={{width: '74%'}}></div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      {[1,2,3].map(i => (
+                        <div key={i}>
+                          <div className="h-8 bg-gray-200 rounded mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded"></div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-center">
+                ) : (
+                  <div className="space-y-4">
                     <div>
-                      <div className="text-2xl font-bold text-green-600">1,247</div>
-                      <div className="text-xs text-gray-500">Genuine</div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600">Average Trust Score</span>
+                        <span className="font-semibold">
+                          {dashboardSummary 
+                            ? `${Math.round(100 - dashboardSummary.fakeReviewPercentage)}%`
+                            : '74%'
+                          }
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full" 
+                          style={{
+                            width: dashboardSummary 
+                              ? `${Math.round(100 - dashboardSummary.fakeReviewPercentage)}%`
+                              : '74%'
+                          }}
+                        ></div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-yellow-600">423</div>
-                      <div className="text-xs text-gray-500">Suspicious</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-red-600">156</div>
-                      <div className="text-xs text-gray-500">Fake</div>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {dashboardSummary ? dashboardSummary.genuineReviewsCount.toLocaleString() : '1,247'}
+                        </div>
+                        <div className="text-xs text-gray-500">Genuine</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {dashboardSummary 
+                            ? Math.max(0, dashboardSummary.totalReviews - dashboardSummary.genuineReviewsCount - dashboardSummary.totalFakeReviews).toLocaleString()
+                            : '423'
+                          }
+                        </div>
+                        <div className="text-xs text-gray-500">Suspicious</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-red-600">
+                          {dashboardSummary ? dashboardSummary.totalFakeReviews.toLocaleString() : '156'}
+                        </div>
+                        <div className="text-xs text-gray-500">Fake</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Trend Chart */}
               <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">Fake Review Trends</h3>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-lg font-bold text-gray-900">Fake Review Trends</h3>
+                    {dashboardSummary && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
+                        Live Data
+                      </span>
+                    )}
+                  </div>
                   <select className="text-sm border border-gray-300 rounded-lg px-3 py-1">
                     <option>Last 7 days</option>
                     <option>Last 30 days</option>
                     <option>Last 90 days</option>
                   </select>
                 </div>
-                <div className="h-48">
-                  <Line data={trendChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
-                </div>
+                {isLoadingDashboard ? (
+                  <div className="h-48 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
+                    <div className="text-gray-400">Loading trend data...</div>
+                  </div>
+                ) : (
+                  <div className="h-48">
+                    <Line 
+                      data={trendChartData} 
+                      options={trendChartOptions} 
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
