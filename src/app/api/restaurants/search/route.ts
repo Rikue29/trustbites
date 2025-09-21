@@ -66,10 +66,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the results for your frontend
-
     let restaurants = searchData.results.map((place: any) => {
       const priceInfo = formatPriceRange(place.price_level);
-    const restaurants = searchData.results.map((place: any) => {
       const cuisineTypes = place.types?.filter((type: string) => 
         !['establishment', 'point_of_interest', 'food', 'store', 'restaurant'].includes(type)
       ) || [];
@@ -97,7 +95,8 @@ export async function GET(request: NextRequest) {
         photos: place.photos?.slice(0, 3).map((photo: any) => ({
           reference: photo.photo_reference,
           width: photo.width,
-          height: photo.height
+          height: photo.height,
+          url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
         })) || []
       };
     });

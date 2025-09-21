@@ -18,6 +18,14 @@ interface Restaurant {
   trustScore?: number;
   photos?: { url: string; reference?: string; width?: number; height?: number }[];
   types?: string[];
+  priceLevel?: number;
+  priceRange?: {
+    level: number | null;
+    symbol: string;
+    description: string;
+    range: string;
+    color?: string;
+  };
 }
 
 interface Review {
@@ -386,7 +394,9 @@ export default function TrustBitesAI() {
                   
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-gray-900">$$$</div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {selectedRestaurant.priceRange?.range || 'N/A'}
+                      </div>
                       <div className="text-xs text-gray-500">Price Range</div>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
