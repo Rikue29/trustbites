@@ -6,12 +6,14 @@ const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const location = searchParams.get('location');
+  const lat = searchParams.get('lat');
+  const lng = searchParams.get('lng');
   const query = searchParams.get('query') || 'restaurant';
-  const radius = searchParams.get('radius') || '1000'; // 1km default
+  const radius = searchParams.get('radius') || '1000';
 
-  if (!location) {
+  if (!location && (!lat || !lng)) {
     return NextResponse.json(
-      { error: 'Location parameter is required' },
+      { error: 'Location parameter or coordinates are required' },
       { status: 400 }
     );
   }
@@ -24,29 +26,34 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // First, geocode the location to get coordinates
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json`;
-    const geocodeParams = new URLSearchParams({
-      address: location,
-      key: GOOGLE_API_KEY
-    });
+    let coordinates;
+    
+    if (lat && lng) {
+      coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+    } else {
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json`;
+      const geocodeParams = new URLSearchParams({
+        address: location!,
+        key: GOOGLE_API_KEY
+      });
 
-    const geocodeResponse = await fetch(`${geocodeUrl}?${geocodeParams}`);
-    const geocodeData = await geocodeResponse.json();
+      const geocodeResponse = await fetch(`${geocodeUrl}?${geocodeParams}`);
+      const geocodeData = await geocodeResponse.json();
 
-    if (geocodeData.status !== 'OK' || !geocodeData.results[0]) {
-      return NextResponse.json(
-        { error: 'Could not find location coordinates' },
-        { status: 404 }
-      );
+      if (geocodeData.status !== 'OK' || !geocodeData.results[0]) {
+        return NextResponse.json(
+          { error: 'Could not find location coordinates' },
+          { status: 404 }
+        );
+      }
+
+      coordinates = geocodeData.results[0].geometry.location;
     }
-
-    const { lat, lng } = geocodeData.results[0].geometry.location;
 
     // Search for nearby restaurants
     const searchUrl = `${PLACES_API_BASE}/nearbysearch/json`;
     const searchParams = new URLSearchParams({
-      location: `${lat},${lng}`,
+      location: `${coordinates.lat},${coordinates.lng}`,
       radius: radius,
       type: 'restaurant',
       key: GOOGLE_API_KEY
@@ -94,10 +101,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       location: {
-        query: location,
-        coordinates: { lat, lng }
+        query: location || 'Current Location',
+        coordinates
       },
-      restaurants: restaurants.slice(0, 20), // Limit to 20 restaurants
+      restaurants: restaurants.slice(0, 20),
       total: restaurants.length
     });
 
