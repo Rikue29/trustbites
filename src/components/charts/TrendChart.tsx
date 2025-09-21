@@ -22,30 +22,46 @@ ChartJS.register(
   Legend
 );
 
-interface TrendChartProps {
-  labels: string[];
-  dataPoints: number[];
-}
-
-export default function TrendChart({ labels, dataPoints }: TrendChartProps) {
+export default function TrendChart() {
+  // Mock data for demonstration
   const data = {
-    labels,
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     datasets: [
       {
-        label: "Fake Reviews Trend",
-        data: dataPoints,
+        label: "Genuine Reviews",
+        data: [12, 19, 15, 25, 22, 18, 24],
+        borderColor: "#22c55e",
+        backgroundColor: "rgba(34, 197, 94, 0.1)",
+        tension: 0.4,
+      },
+      {
+        label: "Fake Reviews",
+        data: [3, 5, 2, 8, 4, 3, 6],
         borderColor: "#ef4444",
-        backgroundColor: "rgba(239, 68, 68, 0.3)",
-        tension: 0.3,
-        fill: true,
+        backgroundColor: "rgba(239, 68, 68, 0.1)",
+        tension: 0.4,
       },
     ],
   };
 
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+      },
+    },
+  };
+
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-md w-full max-w-xl">
-      <h2 className="text-lg font-semibold mb-2">Fake Reviews Over Time</h2>
-      <Line data={data} />
+    <div className="h-64">
+      <Line data={data} options={options} />
     </div>
   );
 }
