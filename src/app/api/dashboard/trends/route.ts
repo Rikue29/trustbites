@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from "../../../../lib/aws-config-compliant";
+import { requireAuth } from "@/lib/auth-middleware";
 
 const dynamoDocClient = DynamoDBDocumentClient.from(dynamoClient);
 
-export async function GET(request: NextRequest) {
+export const GET = requireAuth(async (request: NextRequest, user) => {
   try {
     console.log('Trends API called');
 
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 function analyzeRatingsOverTime(reviews: any[], periodDays: number) {
   const dailyData: Record<string, { ratings: number[], total: number }> = {};
