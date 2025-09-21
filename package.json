@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
+    "verify-aws-setup": "node verify-aws-services.js",
     "create-table": "tsc src/create-table.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/create-table.js",
     "list-tables": "tsc src/list-tables.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/list-tables.js",
     "test-dynamo": "tsc src/test-dynamo.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/test-dynamo.js",
