@@ -88,32 +88,15 @@ export default function TrustBitesAI() {
 
   const loadDashboardData = async () => {
     try {
-      // Load dashboard summary
-      const summaryResponse = await fetch('/api/dashboard/summary');
-      const summaryData = await summaryResponse.json();
-      if (summaryData.success) {
-        setDashboardSummary(summaryData.data);
-      }
-
-      // Load trend data
-      const trendResponse = await fetch('/api/dashboard/trends?period=7');
-      const trendDataResult = await trendResponse.json();
-      if (trendDataResult.success) {
-        setTrendData(trendDataResult.data);
-      }
-
-      // Load recent reviews
-      const recentResponse = await fetch('/api/dashboard/recent-reviews?limit=3');
-      const recentData = await recentResponse.json();
-      if (recentData.success) {
-        setRecentReviews(recentData.data);
-      }
-
-      // Load insights
-      const insightsResponse = await fetch('/api/dashboard/insights');
-      const insightsData = await insightsResponse.json();
-      if (insightsData.success) {
-        setInsights(insightsData.data);
+      // Load business-specific data for Blacky CoffeeBar
+      const businessResponse = await fetch('/api/business/blacky-coffeebar/dashboard');
+      const businessData = await businessResponse.json();
+      
+      if (businessData.success) {
+        setDashboardSummary(businessData.summary);
+        setTrendData(businessData.trends);
+        setRecentReviews(businessData.recentReviews);
+        setInsights(businessData.insights);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -150,7 +133,7 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          trustScore: Math.floor(Math.random() * 40) + 60
+          trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
         setSelectedRestaurant(null);
@@ -188,7 +171,6 @@ export default function TrustBitesAI() {
       
       const response = await fetch(apiUrl);
       console.log(`📡 API response status: ${response.status}`);
-      
       const data = await response.json();
       console.log(`📡 API response data:`, data);
       
@@ -206,16 +188,15 @@ export default function TrustBitesAI() {
       setTimeout(() => {
         setShowAnalysis(true);
         setIsAnalyzing(false);
+        // Auto-scroll to reviews section
+        setTimeout(() => {
+          reviewsRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       }, 2500);
     } catch (error) {
       console.error('❌ Error analyzing reviews:', error);
       setIsAnalyzing(false);
     }
-  };
-
-  const analyzeRestaurant = (restaurant: Restaurant) => {
-    setSelectedRestaurant(restaurant);
-    analyzeReviews();
   };
 
   const handleSuggestionClick = (suggestion: any) => {
@@ -237,22 +218,22 @@ export default function TrustBitesAI() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        console.log('Fetching suggestions for:', input);
         const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
-        const data = await response.json();
         
-        console.log('API response:', data);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
         
         if (data.success && data.predictions) {
           setSuggestions(data.predictions);
           setShowSuggestions(true);
         } else {
-          console.error('API error:', data.error);
           setSuggestions([]);
           setShowSuggestions(false);
         }
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
         setSuggestions([]);
         setShowSuggestions(false);
       }
@@ -273,7 +254,6 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          // Remove hardcoded trust score - will be calculated from real analysis
           trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
@@ -384,7 +364,7 @@ export default function TrustBitesAI() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">TrustBites AI</h1>
-                <p className="text-xs text-gray-500">Fake Review Detector</p>
+                <p className="text-xs text-gray-500">{currentScreen === 'dashboard' ? 'Blacky CoffeeBar Dashboard' : 'Bites you can trust'}</p>
               </div>
             </div>
             
@@ -400,7 +380,7 @@ export default function TrustBitesAI() {
                     fetchSuggestions(e.target.value);
                   }}
                   onKeyPress={(e) => e.key === 'Enter' && searchRestaurants()}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm text-sm font-medium text-black"
                 />
                 <button 
                   onClick={() => searchRestaurants()}
@@ -461,7 +441,7 @@ export default function TrustBitesAI() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                Dashboard
+                Business Dashboard
               </button>
             </div>
           </div>
@@ -484,7 +464,8 @@ export default function TrustBitesAI() {
                     // Reset analysis state when selecting a new restaurant
                     setShowAnalysis(false);
                     setReviews([]);
-                    setIsAnalyzing(false);
+                    // Auto-analyze when restaurant is selected
+                    analyzeReviews(restaurant);
                   }}
                 />
                 
@@ -548,31 +529,14 @@ export default function TrustBitesAI() {
                     </div>
                   </div>
                   
-                  {!showAnalysis && (
-                    <button 
-                      onClick={analyzeReviews}
-                      disabled={isAnalyzing}
-                      className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 mb-4"
-                    >
-                      <span className="flex items-center justify-center space-x-2">
-                        {isAnalyzing ? (
-                          <>
-                            <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Analyzing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <span>Analyze Reviews</span>
-                          </>
-                        )}
-                      </span>
-                    </button>
+                  {isAnalyzing && (
+                    <div className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold mb-4 flex items-center justify-center space-x-2">
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Analyzing Reviews...</span>
+                    </div>
                   )}
                   
                                     <div className="flex-1 overflow-y-auto bg-white">
@@ -622,7 +586,7 @@ export default function TrustBitesAI() {
                           <div className="grid grid-cols-3 gap-2 text-xs">
                             <div className="text-center">
                               <div className="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
-                              <div className="font-medium">Genuine</div>
+                              <div className="font-semibold text-black">Genuine</div>
                               <div className="text-gray-500">
                                 {reviews.length > 0 
                                   ? `${Math.round((reviews.filter(r => r.classification === 'genuine').length / reviews.length) * 100)}%`
@@ -632,7 +596,7 @@ export default function TrustBitesAI() {
                             </div>
                             <div className="text-center">
                               <div className="w-2 h-2 bg-yellow-500 rounded-full mx-auto mb-1"></div>
-                              <div className="font-medium">Suspicious</div>
+                              <div className="font-semibold text-black">Suspicious</div>
                               <div className="text-gray-500">
                                 {reviews.length > 0 
                                   ? `${Math.round((reviews.filter(r => r.classification === 'suspicious').length / reviews.length) * 100)}%`
@@ -642,7 +606,7 @@ export default function TrustBitesAI() {
                             </div>
                             <div className="text-center">
                               <div className="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
-                              <div className="font-medium">Fake</div>
+                              <div className="font-semibold text-black">Fake</div>
                               <div className="text-gray-500">
                                 {reviews.length > 0 
                                   ? `${Math.round((reviews.filter(r => r.classification === 'fake').length / reviews.length) * 100)}%`
@@ -676,6 +640,19 @@ export default function TrustBitesAI() {
         {/* Dashboard Screen */}
         {currentScreen === 'dashboard' && (
           <div>
+            {/* Business Owner Header */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <span className="text-2xl">☕</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-black">Blacky CoffeeBar</h2>
+                  <p className="text-sm text-gray-600">Business Owner Dashboard</p>
+                  <p className="text-xs text-gray-500">Taman Sri Serdang, Seri Kembangan</p>
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Key Metrics */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -691,7 +668,7 @@ export default function TrustBitesAI() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-gray-600">Average Trust Score</span>
-                      <span className="font-semibold">
+                      <span className="font-semibold text-black">
                         {dashboardSummary ? `${Math.round((dashboardSummary.genuineReviewsCount / dashboardSummary.totalReviews) * 100)}%` : '74%'}
                       </span>
                     </div>
@@ -765,7 +742,7 @@ export default function TrustBitesAI() {
                           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                             <span className="text-xs font-medium">JD</span>
                           </div>
-                          <span className="font-medium">john_doe_123</span>
+                          <span className="font-medium text-black">john_doe_123</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -785,7 +762,7 @@ export default function TrustBitesAI() {
                           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                             <span className="text-xs font-medium">SF</span>
                           </div>
-                          <span className="font-medium">sarah_foodie</span>
+                          <span className="font-medium text-black">sarah_foodie</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -804,40 +781,170 @@ export default function TrustBitesAI() {
               </div>
             </div>
 
+            {/* Review Analysis Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Review Analysis</h3>
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      {dashboardSummary ? `${Math.round((dashboardSummary.genuineReviewsCount / dashboardSummary.totalReviews) * 100)}%` : '60%'}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Genuine Reviews</div>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {dashboardSummary ? `${Math.round(((dashboardSummary.totalReviews - dashboardSummary.genuineReviewsCount - dashboardSummary.totalFakeReviews) / dashboardSummary.totalReviews) * 100)}%` : '25%'}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Suspicious</div>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-red-600">
+                      {dashboardSummary ? `${Math.round((dashboardSummary.totalFakeReviews / dashboardSummary.totalReviews) * 100)}%` : '15%'}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Fake Reviews</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Detection Insights */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">AI Detection Insights</h3>
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="bg-red-50 rounded-lg p-3">
+                    <h4 className="text-sm font-semibold text-red-800 mb-1">Common Fake Patterns</h4>
+                    <p className="text-xs text-red-700">Repetitive language, generic praise, excessive superlatives</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <h4 className="text-sm font-semibold text-green-800 mb-1">Genuine Indicators</h4>
+                    <p className="text-xs text-green-700">Specific details, balanced reviews, natural language flow</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Impact Metrics */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Business Impact</h3>
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Customer Trust Increase</span>
+                    <span className="text-sm font-semibold text-green-600">+23%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fake Reviews Blocked</span>
+                    <span className="text-sm font-semibold text-red-600">156</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Revenue Protected</span>
+                    <span className="text-sm font-semibold text-blue-600">RM 12,450</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Monthly Savings</span>
+                    <span className="text-sm font-semibold text-purple-600">RM 3,200</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Competitor Comparison */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Competitor Trust Comparison</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">🍕</span>
+                      <span className="text-lg">☕</span>
                     </div>
                     <div>
-                      <div className="font-semibold">Bella Italia</div>
-                      <div className="text-sm text-gray-500">Your Restaurant</div>
+                      <div className="font-semibold text-black">Blacky CoffeeBar</div>
+                      <div className="text-sm text-gray-500">Your Business</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-green-600">73%</div>
+                    <div className="text-lg font-bold text-green-600">
+                      {dashboardSummary ? `${Math.round((dashboardSummary.genuineReviewsCount / dashboardSummary.totalReviews) * 100)}%` : '77%'}
+                    </div>
                     <div className="text-sm text-gray-500">Trust Score</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                      <span className="text-lg">🍕</span>
+                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <span className="text-lg">☕</span>
                     </div>
                     <div>
-                      <div className="font-semibold">Tony's Pizza</div>
+                      <div className="font-semibold text-black">Coffee Bean & Tea Leaf</div>
                       <div className="text-sm text-gray-500">Competitor</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-red-600">45%</div>
+                    <div className="text-lg font-bold text-yellow-600">62%</div>
                     <div className="text-sm text-gray-500">Trust Score</div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Recent Reviews Analysis */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Recent Reviews Analysis</h3>
+              <div className="space-y-4">
+                {recentReviews.length > 0 ? (
+                  recentReviews.map((review, index) => (
+                    <div key={index} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            review.classification === 'genuine' ? 'bg-green-100 text-green-800 border border-green-200' :
+                            review.classification === 'fake' ? 'bg-red-100 text-red-800 border border-red-200' :
+                            'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                          }`}>
+                            {review.classification === 'genuine' ? '✅ Genuine' : 
+                             review.classification === 'fake' ? '❌ Fake' : 
+                             '⚠️ Suspicious'}
+                          </span>
+                          <span className="text-xs font-medium text-gray-600">
+                            {Math.round(review.confidence * 100)}% confidence
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.reviewText}</p>
+                      {review.explanation && (
+                        <div className="bg-blue-50 rounded-lg p-3 mt-2">
+                          <p className="text-xs text-blue-700">{review.explanation}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p>No recent reviews to analyze</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
