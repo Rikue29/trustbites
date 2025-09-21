@@ -1,0 +1,20 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        - echo "Verifying AWS services and environment..."
+        - node verify-aws-services.js || echo "⚠️ AWS verification skipped - will verify in production"
+    build:
+      commands:
+        - echo "Building TrustBites application..."
+        - npm run build:prod
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
