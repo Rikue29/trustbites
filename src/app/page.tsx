@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
 import { Doughnut, Line } from 'react-chartjs-2';
 import GoogleMap from '@/components/GoogleMap';
@@ -16,7 +16,7 @@ interface Restaurant {
   totalReviews: number;
   emoji?: string;
   trustScore?: number;
-  photos?: { url: string; reference: string; width: number; height: number }[];
+  photos?: { url: string; reference?: string; width?: number; height?: number }[];
   types?: string[];
 }
 
@@ -41,6 +41,10 @@ export default function TrustBitesAI() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     getUserLocation();
@@ -101,25 +105,29 @@ export default function TrustBitesAI() {
     return '🍽️';
   };
 
-  const analyzeReviews = async () => {
-    if (!selectedRestaurant) return;
-    
+  const analyzeRestaurant = async (restaurant: Restaurant) => {
     setIsAnalyzing(true);
+    setShowAnalysis(false);
+    
     try {
-      const response = await fetch(`/api/restaurants/${selectedRestaurant.placeId}/reviews`);
+      const response = await fetch(`/api/restaurants/${restaurant.placeId}/reviews`);
       const data = await response.json();
       
       if (data.success) {
         setReviews(data.analysis.recentReviews);
-        setSelectedRestaurant(prev => prev ? {
-          ...prev,
+        setSelectedRestaurant({
+          ...restaurant,
           trustScore: data.analysis.trustScore
-        } : null);
+        });
       }
       
       setTimeout(() => {
         setShowAnalysis(true);
         setIsAnalyzing(false);
+        // Scroll to reviews section after analysis is complete
+        setTimeout(() => {
+          reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 500);
       }, 2500);
     } catch (error) {
       console.error('Error analyzing reviews:', error);
@@ -127,9 +135,46 @@ export default function TrustBitesAI() {
     }
   };
 
+  const fetchSuggestions = (input: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (input.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        console.log('Fetching suggestions for:', input);
+        const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+        const data = await response.json();
+        
+        console.log('API response:', data);
+        
+        if (data.success && data.predictions) {
+          setSuggestions(data.predictions);
+          setShowSuggestions(true);
+        } else {
+          console.error('API error:', data.error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+  };
+
   const searchRestaurants = async (location?: string) => {
     const query = location || searchQuery.trim();
     if (!query) return;
+    
+    setShowSuggestions(false);
     
     try {
       const response = await fetch(`/api/restaurants/search?location=${encodeURIComponent(query)}&radius=5000`);
@@ -147,6 +192,12 @@ export default function TrustBitesAI() {
     } catch (error) {
       console.error('Error searching restaurants:', error);
     }
+  };
+
+  const handleSuggestionClick = (suggestion: any) => {
+    setSearchQuery(suggestion.description);
+    setShowSuggestions(false);
+    searchRestaurants(suggestion.description);
   };
 
   const pieChartData = {
@@ -196,8 +247,13 @@ export default function TrustBitesAI() {
                   type="text" 
                   placeholder="Search restaurants, cuisines, or locations..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+                    fetchSuggestions(value);
+                  }}
                   onKeyPress={(e) => e.key === 'Enter' && searchRestaurants()}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className="w-full pl-10 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm text-sm bg-white placeholder-gray-500"
                 />
                 <button 
@@ -213,6 +269,30 @@ export default function TrustBitesAI() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                   </svg>
                 </div>
+                
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={suggestion.place_id || index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          </svg>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{suggestion.structured_formatting?.main_text || suggestion.description}</p>
+                            <p className="text-xs text-gray-500">{suggestion.structured_formatting?.secondary_text}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -248,15 +328,15 @@ export default function TrustBitesAI() {
         
         {/* Map View Screen */}
         {currentScreen === 'map' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{minHeight: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)'}}>
             {/* Map Section */}
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden h-full relative">
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden relative" style={{height: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)'}}>
                 <GoogleMap 
                   restaurants={restaurants} 
                   onPlaceSelect={(restaurant) => {
                     setSelectedRestaurant(restaurant);
-                    setShowAnalysis(false);
+                    analyzeRestaurant(restaurant);
                   }}
                 />
                 
@@ -282,9 +362,9 @@ export default function TrustBitesAI() {
             </div>
 
             {/* Restaurant Card */}
-            <div className="lg:col-span-1 h-full">
+            <div className="lg:col-span-1">
               {selectedRestaurant ? (
-                <div className="bg-white rounded-2xl shadow-lg p-6 h-full flex flex-col">
+                <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col" style={{height: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)', minHeight: showAnalysis ? '900px' : '800px'}}>
                   <div className="text-center mb-6">
                     <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden">
                       {selectedRestaurant.photos && selectedRestaurant.photos[0] ? (
@@ -318,35 +398,22 @@ export default function TrustBitesAI() {
                     </div>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto">
-                    <button 
-                      onClick={analyzeReviews}
-                      disabled={isAnalyzing}
-                      className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
-                    >
-                      <span className="flex items-center justify-center space-x-2">
-                        {isAnalyzing ? (
-                          <>
-                            <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Analyzing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                            </svg>
-                            <span>Analyze Reviews with AI</span>
-                          </>
-                        )}
-                      </span>
-                    </button>
+                  <div className="flex-1 overflow-y-auto bg-white">
+                    {isAnalyzing && (
+                      <div className="bg-blue-50 rounded-xl p-4 mb-4">
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-blue-600 font-medium">Analyzing reviews...</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Analysis Results */}
                     {showAnalysis && (
-                      <div className="bg-gray-50 rounded-xl p-4 mt-4">
+                      <div className="bg-gray-50 rounded-xl p-4 overflow-hidden">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-base font-bold text-gray-900">AI Analysis Results</h4>
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -395,44 +462,6 @@ export default function TrustBitesAI() {
                           </div>
                         </div>
 
-                        {/* Recent Reviews */}
-                        <div>
-                          <h5 className="font-medium text-gray-900 mb-2 text-sm">Recent Reviews</h5>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {reviews.slice(0, 3).map((review, index) => (
-                              <div key={review.reviewId || index} className="bg-white rounded-lg p-3 border border-gray-200">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    review.isFake === false ? 'bg-green-100 text-green-700' :
-                                    review.confidence > 0.7 ? 'bg-red-100 text-red-700' :
-                                    'bg-yellow-100 text-yellow-700'
-                                  }`}>
-                                    {review.isFake === false ? '✅ Genuine' : 
-                                     review.confidence > 0.7 ? '❌ Fake' : '⚠️ Suspicious'}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {Math.round(review.confidence * 100)}%
-                                  </span>
-                                </div>
-                                {review.authorName && (
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="text-xs font-medium text-gray-600">{review.authorName}</span>
-                                    {review.rating && (
-                                      <div className="flex items-center space-x-1">
-                                        <span className="text-yellow-400 text-xs">⭐</span>
-                                        <span className="text-xs text-gray-600">{review.rating}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                <p className="text-xs text-gray-700 leading-relaxed line-clamp-2 mb-1">{review.reviewText}</p>
-                                {review.reason && (
-                                  <p className="text-xs text-gray-500 italic">Reason: {review.reason}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     )}
                   </div>
@@ -611,7 +640,92 @@ export default function TrustBitesAI() {
             </div>
           </div>
         )}
+
+        {/* Recent Reviews Section */}
+        {currentScreen === 'map' && selectedRestaurant && showAnalysis && (
+          <div ref={reviewsRef} className="mt-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Reviews Analysis</h3>
+              <div className="space-y-4">
+                {reviews.map((review, index) => (
+                  <div key={review.reviewId || index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        review.isFake === false ? 'bg-green-100 text-green-700' :
+                        review.confidence > 0.7 ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {review.isFake === false ? '✅ Genuine' : review.confidence > 0.7 ? '❌ Fake' : '⚠️ Suspicious'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {Math.round(review.confidence * 100)}%
+                      </span>
+                    </div>
+                    {review.authorName && (
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">{review.authorName}</span>
+                        {review.rating && (
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">⭐</span>
+                            <span className="text-sm text-gray-600">{review.rating}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.reviewText}</p>
+                    {review.reason && (
+                      <p className="text-xs text-gray-500 italic">Reason: {review.reason}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold">TrustBites AI</h3>
+              </div>
+              <p className="text-gray-400 text-sm">AI-powered fake review detection for restaurants. Make informed dining decisions with confidence.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Features</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Real-time review analysis</li>
+                <li>Trust score calculation</li>
+                <li>Location-based search</li>
+                <li>Interactive maps</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Technology</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>AWS Comprehend AI</li>
+                <li>Google Places API</li>
+                <li>Next.js & React</li>
+                <li>Real-time analytics</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+            <p className="text-gray-400 text-sm">&copy; 2024 TrustBites AI. Powered by advanced AI technology.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

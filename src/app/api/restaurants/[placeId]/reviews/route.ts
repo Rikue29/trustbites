@@ -4,9 +4,9 @@ const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { placeId: string } }
+  { params }: { params: Promise<{ placeId: string }> }
 ) {
-  const { placeId } = params;
+  const { placeId } = await params;
 
   if (!GOOGLE_API_KEY) {
     return NextResponse.json(
