@@ -104,9 +104,12 @@ export default function TrustBitesAI() {
   };
 
   const getUserLocation = () => {
+    console.log('🗺️ Getting user location...');
     if (navigator.geolocation) {
+      console.log('✅ Geolocation API available');
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('✅ Location received:', position.coords);
           const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
@@ -114,12 +117,15 @@ export default function TrustBitesAI() {
           setUserLocation(location);
           searchNearbyRestaurants(location);
         },
-        () => {
+        (error) => {
+          console.error('❌ Geolocation error:', error);
+          console.log('🔄 Falling back to Kuala Lumpur');
           // Fallback to Kuala Lumpur if location denied
           searchRestaurants('Kuala Lumpur');
         }
       );
     } else {
+      console.log('❌ Geolocation not available, using Kuala Lumpur');
       searchRestaurants('Kuala Lumpur');
     }
   };
