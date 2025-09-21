@@ -16,8 +16,10 @@ interface Restaurant {
   totalReviews: number;
   emoji?: string;
   trustScore?: number;
-  photos?: { url: string; reference??: string; width??: number; height??: number }[];
+  photos?: { url: string; reference?: string; width?: number; height?: number }[];
   types?: string[];
+  priceLevel?: number;
+  priceRange?: { symbol: string; description: string };
 }
 
 interface Review {
@@ -259,12 +261,6 @@ export default function TrustBitesAI() {
     } catch (error) {
       console.error('Error searching restaurants:', error);
     }
-  };
-
-  const handleSuggestionClick = (suggestion: any) => {
-    setSearchQuery(suggestion.description);
-    setShowSuggestions(false);
-    searchRestaurants(suggestion.description);
   };
 
   const handleSuggestionClick = (suggestion: any) => {
@@ -517,8 +513,12 @@ export default function TrustBitesAI() {
                   
                   <div className="mb-6">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-gray-900">$$$</div>
-                      <div className="text-xs text-gray-500">Price Range</div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {selectedRestaurant.priceRange?.symbol || 'RM 20-50'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {selectedRestaurant.priceRange?.description || 'Price Range'}
+                      </div>
                     </div>
                   </div>
                   
@@ -535,9 +535,9 @@ export default function TrustBitesAI() {
                       </div>
                     )}
 
-              {/* Analysis Results */}
-              {showAnalysis && selectedRestaurant && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
+                    {/* Analysis Results */}
+                    {showAnalysis && (
+                      <div className="bg-gray-50 rounded-xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-2">
                       <h4 className="text-lg font-bold text-gray-900">AI Analysis Results</h4>
@@ -812,6 +812,20 @@ export default function TrustBitesAI() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-lg p-6 h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <p className="text-lg font-medium mb-2">Select a Restaurant</p>
+                    <p className="text-sm">Click on a restaurant marker on the map to view details and analyze reviews</p>
                   </div>
                 </div>
               )}

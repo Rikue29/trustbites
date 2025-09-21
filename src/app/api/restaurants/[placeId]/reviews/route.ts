@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '@/bedrock-ai';
+// import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '@/bedrock-ai';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
@@ -37,34 +37,42 @@ export async function GET(
     const place = data.result;
     const reviews = place.reviews || [];
 
-    const analyzedReviews = await Promise.all(
-      reviews.map(async (review: any) => {
-        const analysis = await detectFakeReviewWithBedrock({
-          reviewId: review.time.toString(),
-          reviewText: review.text,
-          rating: review.rating,
-          language: 'en',
-          authorName: review.author_name,
-          reviewDate: new Date(review.time * 1000).toISOString(),
-          restaurantName: place.name || 'Unknown Restaurant'
-        }, BEDROCK_MODELS.LLAMA3_70B_INSTRUCT);
+    // Simplified analysis without Bedrock for now
+    const analyzedReviews = reviews.map((review: any) => {
+      // Simple fake detection based on patterns
+      const reviewText = review.text.toLowerCase();
+      const fakeIndicators = ['amazing', 'perfect', 'best ever', 'highly recommend'];
+      const suspiciousIndicators = ['worst', 'terrible', 'horrible', 'never again'];
+      
+      const fakeCount = fakeIndicators.filter(indicator => reviewText.includes(indicator)).length;
+      const suspiciousCount = suspiciousIndicators.filter(indicator => reviewText.includes(indicator)).length;
+      
+      let classification = 'genuine';
+      let confidence = 0.7;
+      
+      if (fakeCount >= 2) {
+        classification = 'fake';
+        confidence = 0.8;
+      } else if (suspiciousCount >= 2) {
+        classification = 'suspicious';
+        confidence = 0.7;
+      }
 
-        return {
-          reviewId: review.time.toString(),
-          reviewText: review.text,
-          authorName: review.author_name,
-          rating: review.rating,
-          time: review.time,
-          isFake: analysis.classification === 'fake',
-          classification: analysis.classification,
-          confidence: analysis.confidence,
-          sentiment: analysis.sentiment,
-          reasons: analysis.reasons,
-          explanation: analysis.explanation,
-          languageConfidence: analysis.languageConfidence
-        };
-      })
-    );
+      return {
+        reviewId: review.time.toString(),
+        reviewText: review.text,
+        authorName: review.author_name,
+        rating: review.rating,
+        time: review.time,
+        isFake: classification === 'fake',
+        classification,
+        confidence,
+        sentiment: review.rating >= 4 ? 'positive' : review.rating <= 2 ? 'negative' : 'neutral',
+        reasons: classification !== 'genuine' ? ['pattern_detected'] : [],
+        explanation: `Simple pattern analysis: ${classification}`,
+        languageConfidence: 0.8
+      };
+    });
 
     const totalReviews = analyzedReviews.length;
     const genuineCount = analyzedReviews.filter(r => r.classification === 'genuine').length;

@@ -6,14 +6,14 @@ const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 // Simple price formatting function
 function formatPriceRange(priceLevel: number | undefined) {
   if (priceLevel === undefined || priceLevel === null) {
-    return { symbol: '$$$', description: 'Price not available' };
+    return { symbol: 'RM 20-50', description: 'Price not available' };
   }
   const priceMap: { [key: number]: { symbol: string; description: string } } = {
-    0: { symbol: 'FREE', description: 'Free or very cheap' },
-    1: { symbol: '$', description: 'Inexpensive' },
-    2: { symbol: '$$', description: 'Moderate' },
-    3: { symbol: '$$$', description: 'Expensive' },
-    4: { symbol: '$$$$', description: 'Very expensive' }
+    0: { symbol: 'RM 0-10', description: 'Free or very cheap' },
+    1: { symbol: 'RM 10-25', description: 'Inexpensive' },
+    2: { symbol: 'RM 25-50', description: 'Moderate' },
+    3: { symbol: 'RM 50-100', description: 'Expensive' },
+    4: { symbol: 'RM 100+', description: 'Very expensive' }
   };
   return priceMap[priceLevel] || priceMap[2];
 }
@@ -100,41 +100,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the results for your frontend
-
     let restaurants = searchData.results.map((place: any) => {
-      const priceInfo = formatPriceRange(place.price_level);
-    const restaurants = searchData.results.map((place: any) => {
-      const cuisineTypes = place.types?.filter((type: string) => 
-        !['establishment', 'point_of_interest', 'food', 'store', 'restaurant'].includes(type)
-      ) || [];
-      
-      
-      return {
-        placeId: place.place_id,
-        name: place.name,
-        address: place.vicinity || place.formatted_address,
-        location: {
-          lat: place.geometry.location.lat,
-          lng: place.geometry.location.lng
-        },
-        rating: place.rating || 0,
-        totalReviews: place.user_ratings_total || 0,
-
-        // Enhanced price information
-        priceLevel: place.price_level,
-        priceRange: priceInfo,
-        cuisine: place.types?.filter((type: string) => 
-          !['establishment', 'point_of_interest', 'food'].includes(type)
-        )[0] || 'restaurant',
-        types: place.types || [],
-        isOpen: place.opening_hours?.open_now,
-        photos: place.photos?.slice(0, 3).map((photo: any) => ({
-          reference: photo.photo_reference,
-          width: photo.width,
-          height: photo.height
-        })) || []
-      };
-    });
+      try {
+        const priceInfo = formatPriceRange(place.price_level);
+        
+        return {
+          placeId: place.place_id,
+          name: place.name,
+          address: place.vicinity || place.formatted_address,
+          location: {
+            lat: place.geometry.location.lat,
+            lng: place.geometry.location.lng
+          },
+          rating: place.rating || 0,
+          totalReviews: place.user_ratings_total || 0,
+          types: place.types || [],
+          priceLevel: place.price_level,
+          priceRange: priceInfo,
+          photos: place.photos ? place.photos.slice(0, 3).map((photo: any) => ({
+            url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${GOOGLE_API_KEY}`
+          })) : []
+        };
+      } catch (err) {
+        console.error('Error processing place:', place, err);
+        return null;
+      }
+    }).filter(Boolean);
 
     // Apply price filter if specified
     if (maxPrice !== null && maxPrice !== 'all') {

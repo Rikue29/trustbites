@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addReview, listReviews } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
-import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '../../../bedrock-ai';
+// import { detectFakeReviewWithBedrock, BEDROCK_MODELS } from '../../../bedrock-ai';
 
 export async function GET() {
   try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processPendingReviewsWithBedrock, analyzeSingleReview, BEDROCK_MODELS } from '../../../../bedrock-ai';
+// import { processPendingReviewsWithBedrock, analyzeSingleReview, BEDROCK_MODELS } from '../../../../bedrock-ai';
 
 export async function POST(request: NextRequest) {
   try {
