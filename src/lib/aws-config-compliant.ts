@@ -21,9 +21,9 @@ export const s3Client = new S3Client({
   credentials,
 });
 
-// DynamoDB - Now available in Malaysia!
+// DynamoDB - HACKATHON PRIORITY: Malaysia region first!
 export const dynamoClient = new DynamoDBClient({
-  region: MALAYSIA_REGION, // Primary region - DynamoDB available in Malaysia
+  region: MALAYSIA_REGION, // HACKATHON: Malaysia region prioritized
   credentials,
 });
 

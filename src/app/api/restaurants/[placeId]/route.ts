@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 
+import { formatPriceRange } from '@/lib/price-utils';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { placeId: string } }
@@ -36,6 +38,7 @@ export async function GET(
     }
 
     const place = detailsData.result;
+    const priceInfo = formatPriceRange(place.price_level);
 
     // Format restaurant details
     const restaurant = {
@@ -48,7 +51,9 @@ export async function GET(
       },
       rating: place.rating || 0,
       totalReviews: place.user_ratings_total || 0,
+      // Enhanced price information
       priceLevel: place.price_level,
+      priceRange: priceInfo,
       phone: place.formatted_phone_number,
       website: place.website,
       cuisine: place.types?.filter((type: string) => 

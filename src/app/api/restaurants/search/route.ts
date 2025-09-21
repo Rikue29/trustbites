@@ -3,11 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 
+import { formatPriceRange } from '@/lib/price-utils';
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const location = searchParams.get('location');
   const query = searchParams.get('query') || 'restaurant';
   const radius = searchParams.get('radius') || '1000'; // 1km default
+  const maxPrice = searchParams.get('maxPrice'); // Optional price filter (0-4)
 
   if (!location) {
     return NextResponse.json(
@@ -63,27 +66,46 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the results for your frontend
-    const restaurants = searchData.results.map((place: any) => ({
-      placeId: place.place_id,
-      name: place.name,
-      address: place.vicinity || place.formatted_address,
-      location: {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng
-      },
-      rating: place.rating || 0,
-      totalReviews: place.user_ratings_total || 0,
-      priceLevel: place.price_level,
-      cuisine: place.types?.filter((type: string) => 
-        !['establishment', 'point_of_interest', 'food'].includes(type)
-      )[0] || 'restaurant',
-      isOpen: place.opening_hours?.open_now,
-      photos: place.photos?.slice(0, 3).map((photo: any) => ({
-        reference: photo.photo_reference,
-        width: photo.width,
-        height: photo.height
-      })) || []
-    }));
+    let restaurants = searchData.results.map((place: any) => {
+      const priceInfo = formatPriceRange(place.price_level);
+      
+      return {
+        placeId: place.place_id,
+        name: place.name,
+        address: place.vicinity || place.formatted_address,
+        location: {
+          lat: place.geometry.location.lat,
+          lng: place.geometry.location.lng
+        },
+        rating: place.rating || 0,
+        totalReviews: place.user_ratings_total || 0,
+        // Enhanced price information
+        priceLevel: place.price_level,
+        priceRange: priceInfo,
+        cuisine: place.types?.filter((type: string) => 
+          !['establishment', 'point_of_interest', 'food'].includes(type)
+        )[0] || 'restaurant',
+        isOpen: place.opening_hours?.open_now,
+        photos: place.photos?.slice(0, 3).map((photo: any) => ({
+          reference: photo.photo_reference,
+          width: photo.width,
+          height: photo.height
+        })) || []
+      };
+    });
+
+    // Apply price filter if specified
+    if (maxPrice !== null && maxPrice !== 'all') {
+      const maxPriceLevel = parseInt(maxPrice);
+      if (!isNaN(maxPriceLevel) && maxPriceLevel >= 0 && maxPriceLevel <= 4) {
+        restaurants = restaurants.filter((restaurant: any) => {
+          // Include restaurants with unknown price or price <= maxPriceLevel
+          return restaurant.priceLevel === undefined || 
+                 restaurant.priceLevel === null || 
+                 restaurant.priceLevel <= maxPriceLevel;
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,
