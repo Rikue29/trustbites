@@ -180,17 +180,27 @@ export default function TrustBitesAI() {
   const analyzeReviews = async () => {
     if (!selectedRestaurant) return;
     
+    console.log(`🔍 Starting analysis for restaurant: ${selectedRestaurant.name} (${selectedRestaurant.placeId})`);
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`/api/restaurants/${selectedRestaurant.placeId}/reviews`);
+      const apiUrl = `/api/restaurants/${selectedRestaurant.placeId}/reviews`;
+      console.log(`📡 Making API call to: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl);
+      console.log(`📡 API response status: ${response.status}`);
+      
       const data = await response.json();
+      console.log(`📡 API response data:`, data);
       
       if (data.success) {
+        console.log(`✅ Analysis successful, found ${data.analysis.recentReviews.length} reviews`);
         setReviews(data.analysis.recentReviews);
         setSelectedRestaurant(prev => prev ? {
           ...prev,
           trustScore: data.analysis.trustScore
         } : null);
+      } else {
+        console.error(`❌ Analysis failed:`, data.error);
       }
       
       setTimeout(() => {
@@ -198,7 +208,7 @@ export default function TrustBitesAI() {
         setIsAnalyzing(false);
       }, 2500);
     } catch (error) {
-      console.error('Error analyzing reviews:', error);
+      console.error('❌ Error analyzing reviews:', error);
       setIsAnalyzing(false);
     }
   };
