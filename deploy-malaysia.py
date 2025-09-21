@@ -1,10 +1,9 @@
 import boto3
 import zipfile
 import os
-from load_env import load_env_file
-
-# Load environment variables from .env.local
-load_env_file()
+# Set credentials directly
+# Load from .env.local
+# Load from .env.local
 
 def deploy_to_malaysia():
     # Create Lambda in Malaysia region
@@ -19,14 +18,14 @@ def deploy_to_malaysia():
             response = lambda_client.create_function(
                 FunctionName='trustbites-malaysia-api',
                 Runtime='python3.9',
-                Role='arn:aws:iam::983615436528:role/service-role/lambda-basic-execution-role',
+                Role='arn:aws:iam::983615436528:role/lambda-execution-role',
                 Handler='lambda_function.lambda_handler',
                 Code={'ZipFile': zip_file.read()},
                 Description='TrustBites API - Malaysia Region',
                 Timeout=30,
                 Environment={
                     'Variables': {
-                        'DYNAMODB_REGION': 'ap-southeast-1',  # DynamoDB in Singapore
+                        'DYNAMODB_REGION': 'ap-southeast-5',  # DynamoDB now in Malaysia
                         'COMPREHEND_REGION': 'ap-southeast-1'  # Comprehend in Singapore
                     }
                 }

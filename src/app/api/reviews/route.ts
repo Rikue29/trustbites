@@ -74,7 +74,7 @@ async function detectFakeReview(text: string): Promise<{
   explanation: string;
 }> {
   try {
-    const { comprehendClient } = await import('@/lib/aws-config');
+    const { comprehendClient } = await import('@/lib/aws-config-compliant');
     const { DetectSentimentCommand, DetectDominantLanguageCommand } = await import('@aws-sdk/client-comprehend');
     
     // Detect language first
@@ -85,7 +85,7 @@ async function detectFakeReview(text: string): Promise<{
     // Detect sentiment
     const sentimentCommand = new DetectSentimentCommand({
       Text: text,
-      LanguageCode: dominantLanguage?.LanguageCode || 'en'
+      LanguageCode: (dominantLanguage?.LanguageCode as any) || 'en'
     });
     const sentimentResult = await comprehendClient.send(sentimentCommand);
     

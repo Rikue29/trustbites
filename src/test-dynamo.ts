@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { addReview, getReview, listReviews } from "./db.js";
+import { addReview, getReview, listReviews } from "./lib/db";
 
 // Load environment variables from .env.local file
 dotenv.config({ path: '.env.local' });

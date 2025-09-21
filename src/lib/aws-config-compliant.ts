@@ -5,6 +5,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { S3Client } from '@aws-sdk/client-s3';
 import { ComprehendClient } from '@aws-sdk/client-comprehend';
+import { LambdaClient } from '@aws-sdk/client-lambda';
 
 const MALAYSIA_REGION = 'ap-southeast-5';
 const SINGAPORE_REGION = 'ap-southeast-1'; // Only for unavailable services
@@ -33,7 +34,7 @@ export const comprehendClient = new ComprehendClient({
 });
 
 // Lambda client for Malaysia region
-export const lambdaClient = new (await import('@aws-sdk/client-lambda')).LambdaClient({
+export const lambdaClient = new LambdaClient({
   region: MALAYSIA_REGION,
   credentials,
 });

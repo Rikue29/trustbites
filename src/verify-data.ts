@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
-import { dynamoClient } from "./lib/aws-config.js";
+import { dynamoClient } from "./lib/aws-config-compliant";
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });

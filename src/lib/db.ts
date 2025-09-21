@@ -1,9 +1,21 @@
 import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
-import { dynamoClient } from "./aws-config";
+import { dynamoClient } from "./aws-config-compliant";
 
 const dynamoDocClient = DynamoDBDocumentClient.from(dynamoClient);
 
-export async function addReview(review: { reviewId: string; restaurantId: string; reviewText: string; isFake: boolean }) {
+export async function addReview(review: { 
+  reviewId: string; 
+  restaurantId: string; 
+  reviewText: string; 
+  isFake: boolean;
+  sentiment?: string;
+  language?: string;
+  confidence?: number;
+  rating?: number;
+  authorName?: string;
+  reviewDate?: string;
+  reasons?: string[];
+}) {
   await dynamoDocClient.send(new PutCommand({
     TableName: "Reviews",
     Item: review,

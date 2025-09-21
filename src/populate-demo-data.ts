@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import { dynamoClient } from "./lib/aws-config.js";
+import { dynamoClient } from "./lib/aws-config-compliant";
 import { v4 as uuidv4 } from 'uuid';
 
 // Load environment variables

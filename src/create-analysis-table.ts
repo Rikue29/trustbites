@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import { CreateTableCommand } from "@aws-sdk/client-dynamodb";
-import { dynamoClient } from "./lib/aws-config.js";
+import { dynamoClient } from "./lib/aws-config-compliant";
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });

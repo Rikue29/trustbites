@@ -103,7 +103,7 @@ async function testTrustBitesBackend() {
       const searchResult: any = await searchResponse.json();
       console.log('✅ Search successful:', {
         count: searchResult.count,
-        restaurants: searchResult.restaurants?.map(r => ({ id: r.restaurantId, name: r.name }))
+        restaurants: searchResult.restaurants?.map((r: any) => ({ id: r.restaurantId, name: r.name }))
       });
     } else {
       console.log('❌ Search failed:', await searchResponse.text());
