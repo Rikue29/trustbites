@@ -1,0 +1,229 @@
+{
+  "scrapeInfo": {
+    "area": "Bukit Bintang, Kuala Lumpur, Malaysia",
+    "timestamp": "2025-09-21T11:03:23.591564",
+    "totalRestaurants": 5,
+    "totalReviews": 22
+  },
+  "restaurants": [
+    {
+      "scrapedAt": "2025-09-21T11:03:17.677022",
+      "placeId": "ChIJo9SSkCg2zDERLTJZO96nUi8",
+      "name": "Penang Village",
+      "address": "Berjaya Times Square, Lg-47 To 49 & 76, Jln Imbi, Imbi, 55100 Kuala Lumpur, Federal Territory of Kuala Lumpur, Malaysia",
+      "rating": 5,
+      "totalReviews": 2,
+      "phone": null,
+      "website": null,
+      "area": "Bukit Bintang, Kuala Lumpur",
+      "liveReviews": [
+        {
+          "author": "asik didar",
+          "rating": 5,
+          "text": "Very nice and comfortable place. I feel happy.",
+          "time": "a year ago",
+          "language": "en"
+        },
+        {
+          "author": "Suriani Rohim",
+          "rating": 5,
+          "text": "Zara Balqis binti Motbin",
+          "time": "5 years ago",
+          "language": "en-US"
+        }
+      ]
+    },
+    {
+      "scrapedAt": "2025-09-21T11:03:18.910974",
+      "placeId": "ChIJhxoQRiw2zDER23Qc7fVLTKs",
+      "name": "Splash",
+      "address": "Level 4, The Westin Kuala Lumpur, 199, Jalan Bukit Bintang, Bukit Bintang, 55100 Kuala Lumpur, Federal Territory of Kuala Lumpur, Malaysia",
+      "rating": 4.8,
+      "totalReviews": 30,
+      "phone": "03-2773 8338",
+      "website": "http://www.thewestinkualalumpur.com/splash",
+      "area": "Bukit Bintang, Kuala Lumpur",
+      "liveReviews": [
+        {
+          "author": "Mimi",
+          "rating": 5,
+          "text": "I really enjoyed my visit to Splash! The juice was fresh and tasted amazing. A special mention to Rahmat, one of the staff members, who was extremely friendly and polite. His warm service made the experience even better. Definitely recommend stopping by if you’re here!",
+          "time": "3 weeks ago",
+          "language": "en"
+        },
+        {
+          "author": "Reon Lim",
+          "rating": 5,
+          "text": "Always a pleasant experience dining at Splash. Special thanks to Rahmat who was always friendly and helpful throughout. Excellent service – truly made the experience even better.",
+          "time": "a month ago",
+          "language": "en"
+        },
+        {
+          "author": "あんこ",
+          "rating": 5,
+          "text": "We can feel relaxed to eat. I love the hotel made hamburgers and sometimes eat them. This hamburger was delicious with bacon and well fried onion and thick hamburg. I recommend eating it with beer 🍺🍻",
+          "time": "a year ago",
+          "language": "en"
+        },
+        {
+          "author": "Muhammad Syafiq bin Ahmad",
+          "rating": 5,
+          "text": "Had a great time at the pool thanks to Rahmat. He was super helpful and polite. Really appreciated the warm hospitality!",
+          "time": "a month ago",
+          "language": "en"
+        },
+        {
+          "author": "Rodel Eliseo De Silva",
+          "rating": 5,
+          "text": "I would like to commed Rahmad for the warm welcome and accomodating us.  Thanks for the free coffee.",
+          "time": "2 weeks ago",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "scrapedAt": "2025-09-21T11:03:20.136858",
+      "placeId": "ChIJkxdTEyw2zDERNUtzSIepFck",
+      "name": "Suzie Wong - Dinner and Show",
+      "address": "Ground Floor, Wisma Lim Foo Yong, 86, Jalan Raja Chulan, Kuala Lumpur, 50200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+      "rating": 4.8,
+      "totalReviews": 3563,
+      "phone": "017-226 6480",
+      "website": "http://www.suziewong.asia/rsvp",
+      "area": "Bukit Bintang, Kuala Lumpur",
+      "liveReviews": [
+        {
+          "author": "Daniel Thong",
+          "rating": 3,
+          "text": "Basically a hype place with below average food. Despite the effort from the chef to create something unique and fusion, for me the food is either too blend or too mixed up in weird taste that does not match and too overlapping the right taste.\n\nCrew was awesome to create a lively environment, Kudos to few that even had to dance & entertain patron while preparing food.\n\nFor me is a one time hit diner, just to see and feel, done and forget kind of place.",
+          "time": "5 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Mandy Cheong",
+          "rating": 5,
+          "text": "Never knew this place could be so good, the food the drinks the live band and the queens - world class. please come visit and get ready to be amazed, I'm a happy customer. Clinton is an amazing singer better than Mr Smith ❤️ big love",
+          "time": "3 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Tonia Yammine",
+          "rating": 3,
+          "text": "The place was nice , the show was fun.\nThe food was awful maybe the worst ever in Malaysia and in life.  We tried seafood noodles but the noodles and seafood were emerged in a chicken broth that create a very weird and awful taste . The dish was even bad to look at it (similar to vomit). We highly recommend to remove it from the menu for the sake of culinary basics.\nThe service was good. The waiters were nice but communication wasn’t good , they couldn’t explain the food , ingredients maybe the language was a barrier bcz they couldn’t speak well english.\nPlus it is an expensive place.\nYou rather go to take drink after dinner.",
+          "time": "4 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Prithiv Chandar",
+          "rating": 5,
+          "text": "Finding Suzie Wong was an adventure, we wandered with a few others also trying to locate it! Hidden and mysterious, it added to the experience. The venue was stunning, and the food delicious. It was pricier than expected, but worth it for a unique, unforgettable night in KL.",
+          "time": "2 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Kenneth Chin",
+          "rating": 3,
+          "text": "Was decent experience but not up to my expectations. Went on a Thursday night. Floor show only lasted 10 min and repeats every hour. Food was adequate, large portions and tasted ok, but not amazing. Cocktails were excellent\n\nGood for groups or parties. Not much atmosphere until after 8:30pm. Good to go once but would not return",
+          "time": "4 months ago",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "scrapedAt": "2025-09-21T11:03:21.336117",
+      "placeId": "ChIJz-5t6yg2zDERAjTYXv5E-Ig",
+      "name": "Samplings On The Fourteenth Restaurant",
+      "address": "Level 14 East Wing, Hotel, Berjaya Times Square, 1, Jln Imbi, Bukit Bintang, 55100 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+      "rating": 4.7,
+      "totalReviews": 62,
+      "phone": "03-2117 8000",
+      "website": "https://www.berjayahotel.com/kualalumpur/dining/samplings-fourteenth-restaurant.html",
+      "area": "Bukit Bintang, Kuala Lumpur",
+      "liveReviews": [
+        {
+          "author": "Sofea Rose",
+          "rating": 5,
+          "text": "The taste of the food is delicious.. melt in the mouth and give you the feeling of wanting more.. friendly staff and nice environment too.",
+          "time": "2 months ago",
+          "language": "en"
+        },
+        {
+          "author": "jual mahal",
+          "rating": 4,
+          "text": "The award-winning fine dining restaurant to be appreciated by food aficionados alike with the best view of the coming tallest building in Malaysia right now, 106 Exchange (TRX). Sometimes, it offers seasonal theme menu. For wine lovers, there are varieties from many countries. Restroom is provided.",
+          "time": "7 years ago",
+          "language": "en"
+        },
+        {
+          "author": "Chan K.E.",
+          "rating": 5,
+          "text": "Comfortable dining place for small groups and private functions prepared by all well known Malaysian and foreign chefs. Excellent pastry and good samples of Malaysian heritage cooking.",
+          "time": "4 years ago",
+          "language": "en"
+        },
+        {
+          "author": "Kaptain Kerr",
+          "rating": 4,
+          "text": "I can't comment on the food or overall dining experience as during out stay it was closed for Chinese New Year so a shame we never got to try it out. But it's in a great location on level 14 of the Berjaya Times Square Hotel. The decor looked nice  too.",
+          "time": "7 years ago",
+          "language": "en"
+        },
+        {
+          "author": "DrStranger Thanos",
+          "rating": 4,
+          "text": "I like the view & their service is good. Decent place for dinner.",
+          "time": "4 years ago",
+          "language": "en"
+        }
+      ]
+    },
+    {
+      "scrapedAt": "2025-09-21T11:03:22.585022",
+      "placeId": "ChIJAAAAACw2zDER59qJSCHgsAc",
+      "name": "Pinchos Tapas Bar",
+      "address": "18, Changkat Bukit Bintang, Bukit Bintang, 50200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+      "rating": 4.5,
+      "totalReviews": 964,
+      "phone": "03-2145 8482",
+      "website": "https://www.pinchoskl.com/",
+      "area": "Bukit Bintang, Kuala Lumpur",
+      "liveReviews": [
+        {
+          "author": "Carmen Chan",
+          "rating": 4,
+          "text": "Lovely tavern for Spanish tapas, interior is cozy and dimly lit giving a romantic vibe. A lot of options available for sharing. The tapas we ordered were tasty. Pricing is quite steep however it’s expected for the location of the restaurant. Service was prompt and attentive. Lovely for an occasion.",
+          "time": "4 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Laurent Myter",
+          "rating": 5,
+          "text": "After over 15 years of dining at Pinchos Tapas Bar, I can confidently say it remains one of the best spots in Kuala Lumpur. This charming and consistently reliable tapas bar has stood the test of time, offering a warm, welcoming atmosphere with excellent service and an authentic Spanish experience.\n\nWhat makes Pinchos exceptional is its unwavering quality—every dish is prepared with care and consistency, bursting with flavor and beautifully presented. Whether it’s the classic gambas al ajillo, patatas bravas, or the rotating selection of tapas specials, the kitchen delivers every time. The ingredients are fresh, and the attention to detail shines through.\n\nPricing is also a strong point here: fair and reasonable, especially for the quality of the food and experience. It’s a place where you can enjoy a great evening without feeling overcharged.\n\nThe staff, especially the waitresses, add to the charm. Friendly, attentive, and professional, they make every visit feel personal and enjoyable—whether you’re a long-time regular or a first-time guest.\n\nPinchos isn’t just a restaurant—it’s a place that feels like a local institution. It’s perfect for a casual dinner, a date night, or a relaxed evening out with friends. After all these years, it still delivers everything that made me fall in love with it in the first place.\n\nHighly recommended.",
+          "time": "4 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Michael",
+          "rating": 5,
+          "text": "I love good wine, cheese, and Iberico jamon. Pinchos offers much more than that and I also love the vibe, atmosphere and friendly service. I discovered this place in 2024 and am a returning guest tonight in May 2025. Highly recommend for a romantic night out or even as a solo diner.",
+          "time": "4 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Cheng Han Chua",
+          "rating": 4,
+          "text": "Happy hour wine is quite good for the price.\n\nThe service staff is attentive and did share what is good in the bar. But she recommended almost the entire menu which seems that everything is good there.\n\nBut when we did order the food, although presentation could be better, the taste did not disappoint! - The only losing factor is the Chorizo Sausages which tasted like canned ones.\n\nWorth a visit.",
+          "time": "9 months ago",
+          "language": "en"
+        },
+        {
+          "author": "Jimmy B",
+          "rating": 3,
+          "text": "Total bill 144.75 for 3 tapas 2 coke zero and cranberry juice.16 ringit plus tax for a coke zero is rather high... expensive for 3 small bites....taste was good but beef skewer not that much meat and pretty chewy....maybe not important for most people but my for people who can not eat pork there is little choice left...to much focus on pork!no seafood choices....in the end price/quality a bit to expensive for what you get...",
+          "time": "4 weeks ago",
+          "language": "en"
+        }
+      ]
+    }
+  ]
+}

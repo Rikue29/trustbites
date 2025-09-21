@@ -1,23 +1,23 @@
-# 🤖 AI Model Integration Guide for TrustBites
+# 🍽️ TrustBites: AI-Powered Fake Review Detection System
 
-**Welcome AI Teammate!** This guide will help you integrate your trained fake review detection model into the TrustBites backend.
+## 🎯 **What TrustBites Does**
+**TrustBites is a comprehensive platform that helps consumers identify trustworthy restaurants by detecting fake reviews using AI analysis.**
 
-## 🚀 Quick Start
+---
 
-### Step 1: Get the Code
-```bash
-git clone https://github.com/Rikue29/trustbites.git
-cd trustbites
-git checkout businessOwner-dashboard-backend-clean
-npm install
+## 🌟 **Consumer-Facing Features Built**
+
+### 🌍 **1. Global Restaurant Search**
+**API**: `GET /api/restaurants/search`
+
+**What it does:**
+- Search restaurants **anywhere in the world**
+- Real-time data from Google Places API
+- Supports any location (KL, Singapore, Tokyo, New York, etc.)
+
+**Example Usage:**
 ```
-
-### Step 2: Setup Environment
-Create `.env.local` file in the root directory:
-```
-AWS_ACCESS_KEY_ID=your_aws_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_here
-AWS_DEFAULT_REGION=ap-southeast-5
+GET /api/restaurants/search?location=Kuala Lumpur,Malaysia&radius=5000
 ```
 
 ### Step 3: Install Python Dependencies
