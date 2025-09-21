@@ -7,9 +7,9 @@ export async function GET() {
     googlePlacesApi: !!process.env.GOOGLE_PLACES_API_KEY,
     googleMapsApi: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     awsRegion: !!process.env.TRUSTBITES_AWS_REGION,
-    awsAccessKey: !!process.env.TRUSTBITES_AWS_ACCESS_KEY_ID,
-    awsSecretKey: !!process.env.TRUSTBITES_AWS_SECRET_ACCESS_KEY,
-    bedrockRegion: !!process.env.TRUSTBITES_BEDROCK_REGION
+    awsAccessKey: !!process.env.TRUSTBITES_ACCESS_KEY_ID,
+    awsSecretKey: !!process.env.TRUSTBITES_SECRET_ACCESS_KEY,
+    bedrockRegion: !!process.env.BEDROCK_REGION
   };
 
   console.log('Environment Variables Status:', envStatus);
