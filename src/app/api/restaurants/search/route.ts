@@ -1,22 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { formatPriceRange } from '@/lib/price-utils';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
-
-// Simple price formatting function
-function formatPriceRange(priceLevel: number | undefined) {
-  if (priceLevel === undefined || priceLevel === null) {
-    return { symbol: '$$$', description: 'Price not available' };
-  }
-  const priceMap: { [key: number]: { symbol: string; description: string } } = {
-    0: { symbol: 'FREE', description: 'Free or very cheap' },
-    1: { symbol: '$', description: 'Inexpensive' },
-    2: { symbol: '$$', description: 'Moderate' },
-    3: { symbol: '$$$', description: 'Expensive' },
-    4: { symbol: '$$$$', description: 'Very expensive' }
-  };
-  return priceMap[priceLevel] || priceMap[2];
-}
 
 export async function GET(request: NextRequest) {
   console.log('=== Restaurant Search API Called ===');
@@ -163,7 +149,7 @@ export async function GET(request: NextRequest) {
     console.error('Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      coordinates,
+      location: location || `${lat},${lng}`,
       GOOGLE_API_KEY: GOOGLE_API_KEY ? 'Present' : 'Missing'
     });
     return NextResponse.json(
