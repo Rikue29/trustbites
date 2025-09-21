@@ -75,17 +75,28 @@ export default function GoogleMap({ restaurants, onPlaceSelect }: GoogleMapProps
     markersRef.current = [];
 
     restaurants.forEach((restaurant) => {
+      // Calculate trust score if missing (fallback based on rating)
+      const trustScore = restaurant.trustScore ?? (restaurant.rating ? Math.round(restaurant.rating * 20) : 50);
+      
+      // Determine color based on trust score
+      const getMarkerColor = (score: number) => {
+        if (score >= 80) return '#10b981'; // Green
+        if (score >= 60) return '#f59e0b'; // Yellow
+        return '#ef4444'; // Red
+      };
+      
+      const markerColor = getMarkerColor(trustScore);
+      
+      console.log(`Restaurant: ${restaurant.name}, Trust Score: ${trustScore}, Color: ${markerColor}`);
+      
       const marker = new window.google.maps.Marker({
         position: restaurant.location,
         map: mapInstanceRef.current,
-        title: restaurant.name,
+        title: `${restaurant.name} (Trust: ${trustScore}%)`,
         icon: {
           url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
             <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="20" cy="20" r="18" fill="${
-                restaurant.trustScore && restaurant.trustScore >= 80 ? '#10b981' :
-                restaurant.trustScore && restaurant.trustScore >= 60 ? '#f59e0b' : '#ef4444'
-              }" stroke="white" stroke-width="2"/>
+              <circle cx="20" cy="20" r="18" fill="${markerColor}" stroke="white" stroke-width="2"/>
               <text x="20" y="26" text-anchor="middle" font-size="16" fill="white">${restaurant.emoji || '🍽️'}</text>
             </svg>
           `)}`,
