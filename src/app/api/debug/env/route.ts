@@ -12,7 +12,21 @@ export async function GET() {
     bedrockRegion: !!process.env.BEDROCK_REGION
   };
 
+  // Get ALL environment variables to see what's actually available
+  const allEnvVars = Object.keys(process.env)
+    .filter(key => 
+      key.includes('GOOGLE') || 
+      key.includes('TRUSTBITES') || 
+      key.includes('BEDROCK') ||
+      key.includes('AWS')
+    )
+    .reduce((obj, key) => {
+      obj[key] = process.env[key] ? `${process.env[key].substring(0, 10)}...` : 'NOT SET';
+      return obj;
+    }, {} as Record<string, string>);
+
   console.log('Environment Variables Status:', envStatus);
+  console.log('All relevant env vars:', allEnvVars);
 
   // Test Google Places API if available
   let apiTest = null;
@@ -39,6 +53,7 @@ export async function GET() {
     message: 'Environment Debug Info',
     timestamp: new Date().toISOString(),
     environment: envStatus,
+    allRelevantEnvVars: allEnvVars,
     googlePlacesTest: apiTest,
     userAgent: process.env.NODE_ENV || 'unknown'
   });
