@@ -1,7 +1,7 @@
-# TrustBites Dashboard API Documentation
+# TrustBites API Documentation
 
 ## Overview
-The TrustBites Dashboard APIs provide comprehensive analytics and insights for business owners to monitor their restaurant reviews and detect fake reviews.
+The TrustBites APIs provide comprehensive analytics, restaurant search, and real-time review fetching capabilities for the hackathon project.
 
 All APIs return JSON responses with the following structure:
 ```json
@@ -15,6 +15,103 @@ All APIs return JSON responses with the following structure:
 ## Base URL
 ```
 http://localhost:3000 (development)
+```
+
+## 🆕 NEW: Restaurant Search & Real-Time Reviews
+
+### Search Restaurants by Location
+
+**Endpoint:** `GET /api/restaurants/search`
+
+**Description:** Search for restaurants in any location using Google Places API (perfect for Bukit Bintang, Kuala Lumpur!)
+
+**Parameters:**
+- `location` (required): Any location worldwide (e.g., "Times Square, New York", "Shibuya, Tokyo", "Oxford Street, London")
+- `radius` (optional): Search radius in meters (default: 1000)
+- `query` (optional): Additional search terms (default: "restaurant")
+
+**Examples (Global Coverage):**
+```
+GET /api/restaurants/search?location=Times Square, New York&radius=1500
+GET /api/restaurants/search?location=Shibuya, Tokyo
+GET /api/restaurants/search?location=Oxford Street, London
+GET /api/restaurants/search?location=Orchard Road, Singapore
+GET /api/restaurants/search?location=Bukit Bintang, Kuala Lumpur
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "location": {
+    "query": "Bukit Bintang, Kuala Lumpur",
+    "coordinates": { "lat": 3.1467855, "lng": 101.7113043 }
+  },
+  "restaurants": [
+    {
+      "placeId": "ChIJkxdTEyw2zDERsy8XiwXjebY",
+      "name": "Jogoya Japanese Buffet Restaurant",
+      "address": "181, Bukit Bintang Road, Bukit Bintang, Kuala Lumpur",
+      "location": { "lat": 3.146, "lng": 101.711 },
+      "rating": 3.8,
+      "totalReviews": 2946,
+      "priceLevel": 3,
+      "cuisine": "japanese_restaurant",
+      "isOpen": true,
+      "photos": [...]
+    }
+  ],
+  "total": 20
+}
+```
+
+### Get Real-Time Restaurant Reviews
+
+**Endpoint:** `GET /api/restaurants/[placeId]`
+
+**Description:** Fetch real-time restaurant details and reviews from Google Places API
+
+**Parameters:**
+- `placeId` (in URL): Google Places ID from search results
+
+**Example:**
+```
+GET /api/restaurants/ChIJkxdTEyw2zDERsy8XiwXjebY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "restaurant": {
+    "placeId": "ChIJkxdTEyw2zDERsy8XiwXjebY",
+    "name": "Jogoya Japanese Buffet Restaurant",
+    "address": "181, Bukit Bintang Road...",
+    "rating": 3.8,
+    "totalReviews": 2946,
+    "phone": "+60 3-2141 3168",
+    "website": "http://jogoya.com.my",
+    "openingHours": ["Monday: 6:00 PM – 10:30 PM", ...],
+    "photos": [...]
+  },
+  "reviews": [
+    {
+      "reviewId": "google_1693526400_John_Doe",
+      "restaurantPlaceId": "ChIJkxdTEyw2zDERsy8XiwXjebY",
+      "authorName": "John Doe",
+      "reviewText": "Great food and service...",
+      "rating": 5,
+      "reviewDate": "2024-08-31T16:00:00.000Z",
+      "language": "en",
+      "source": "google_places",
+      "isFake": null,
+      "confidence": null,
+      "sentiment": null
+    }
+  ],
+  "totalReviews": 5,
+  "lastUpdated": "2025-09-21T10:30:00.000Z"
+}
 ```
 
 ---

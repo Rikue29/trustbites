@@ -1,5 +1,5 @@
 import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
-import { dynamoClient } from "./aws-config";
+import { dynamoClient } from "./aws-config-compliant";
 
 const dynamoDocClient = DynamoDBDocumentClient.from(dynamoClient);
 
