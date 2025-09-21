@@ -19,6 +19,7 @@
     "populate-demo": "tsc src/populate-demo-data.ts --outDir dist --target es2020 --module es2020 --moduleResolution node && node dist/populate-demo-data.js"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.893.0",
     "@aws-sdk/client-comprehend": "^3.893.0",
     "@aws-sdk/client-dynamodb": "^3.893.0",
     "@aws-sdk/client-lambda": "^3.893.0",
