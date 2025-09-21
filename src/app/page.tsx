@@ -18,6 +18,14 @@ interface Restaurant {
   trustScore?: number;
   photos?: { url: string; reference?: string; width?: number; height?: number }[];
   types?: string[];
+  priceLevel?: number;
+  priceRange?: {
+    level: number | null;
+    symbol: string;
+    description: string;
+    range: string;
+    color?: string;
+  };
 }
 
 interface Review {
@@ -27,9 +35,30 @@ interface Review {
   rating?: number;
   time?: number;
   isFake: boolean;
+  classification?: 'genuine' | 'suspicious' | 'fake';
   confidence: number;
   sentiment: string;
   reason?: string;
+  reasons?: string[];
+  explanation?: string;
+  languageConfidence?: number;
+}
+
+interface DashboardSummary {
+  totalReviews: number;
+  totalFakeReviews: number;
+  fakeReviewPercentage: number;
+  averageRating: number;
+  recentReviewsCount: number;
+  totalRestaurants: number;
+  genuineReviewsCount: number;
+}
+
+interface TrendData {
+  period: number;
+  totalReviews: number;
+  fakeReviewRatioOverTime: { date: string; ratio: number }[];
+  volumeOverTime: { date: string; volume: number }[];
 }
 
 export default function TrustBitesAI() {
@@ -91,8 +120,6 @@ export default function TrustBitesAI() {
   };
 
   const getEmojiForCuisine = (types: string[]) => {
-    if (!types || types.length === 0) return '🍽️';
-    
     const typeStr = types.join(' ').toLowerCase();
     if (typeStr.includes('pizza') || typeStr.includes('italian')) return '🍕';
     if (typeStr.includes('burger') || typeStr.includes('american')) return '🍔';
@@ -109,29 +136,25 @@ export default function TrustBitesAI() {
     return '🍽️';
   };
 
-  const analyzeRestaurant = async (restaurant: Restaurant) => {
-    setIsAnalyzing(true);
-    setShowAnalysis(false);
+  const analyzeReviews = async () => {
+    if (!selectedRestaurant) return;
     
+    setIsAnalyzing(true);
     try {
-      const response = await fetch(`/api/restaurants/${restaurant.placeId}/reviews`);
+      const response = await fetch(`/api/restaurants/${selectedRestaurant.placeId}/reviews`);
       const data = await response.json();
       
       if (data.success) {
         setReviews(data.analysis.recentReviews);
-        setSelectedRestaurant({
-          ...restaurant,
+        setSelectedRestaurant(prev => prev ? {
+          ...prev,
           trustScore: data.analysis.trustScore
-        });
+        } : null);
       }
       
       setTimeout(() => {
         setShowAnalysis(true);
         setIsAnalyzing(false);
-        // Scroll to reviews section after analysis is complete
-        setTimeout(() => {
-          reviewsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 500);
       }, 2500);
     } catch (error) {
       console.error('Error analyzing reviews:', error);
@@ -188,7 +211,8 @@ export default function TrustBitesAI() {
         const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
           ...r,
           emoji: getEmojiForCuisine(r.types || [r.cuisine]),
-          trustScore: Math.floor(Math.random() * 40) + 60
+          // Remove hardcoded trust score - will be calculated from real analysis
+          trustScore: null
         }));
         setRestaurants(restaurantsWithEmojis);
         setSelectedRestaurant(null);
@@ -197,32 +221,75 @@ export default function TrustBitesAI() {
       console.error('Error searching restaurants:', error);
     }
   };
-
-  const handleSuggestionClick = (suggestion: any) => {
-    setSearchQuery(suggestion.description);
-    setShowSuggestions(false);
-    searchRestaurants(suggestion.description);
-  };
-
+  // Generate chart data from real dashboard data
   const pieChartData = {
     labels: ['Genuine', 'Suspicious', 'Fake'],
     datasets: [{
-      data: [60, 25, 15],
+      data: dashboardSummary ? [
+        dashboardSummary.genuineReviewsCount,
+        Math.max(0, dashboardSummary.totalReviews - dashboardSummary.genuineReviewsCount - dashboardSummary.totalFakeReviews), // Suspicious
+        dashboardSummary.totalFakeReviews
+      ] : [60, 25, 15], // Fallback values
       backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
       borderWidth: 0
     }]
   };
 
+  const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const value = context.parsed;
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            return `${context.label}: ${percentage}% (${value.toLocaleString()} reviews)`;
+          }
+        }
+      }
+    }
+  };
+
   const trendChartData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: trendData?.fakeReviewRatioOverTime?.map(item => {
+      const date = new Date(item.date);
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }) || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
       label: 'Fake Reviews Detected',
-      data: [12, 8, 15, 6, 9, 18, 11],
+      data: trendData?.fakeReviewRatioOverTime?.map(item => Math.round(item.ratio * 100)) || [12, 8, 15, 6, 9, 18, 11],
       borderColor: '#ef4444',
       backgroundColor: 'rgba(239, 68, 68, 0.1)',
       tension: 0.4,
       fill: true
     }]
+  };
+  const trendChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            return `Fake Reviews: ${context.parsed.y}%`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value: any) {
+            return value + '%';
+          }
+        }
+      }
+    }
   };
 
   return (
@@ -251,14 +318,9 @@ export default function TrustBitesAI() {
                   type="text" 
                   placeholder="Search restaurants, cuisines, or locations..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSearchQuery(value);
-                    fetchSuggestions(value);
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchRestaurants()}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  className="w-full pl-10 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm text-sm bg-white placeholder-gray-500"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm text-sm"
                 />
                 <button 
                   onClick={() => searchRestaurants()}
@@ -272,8 +334,7 @@ export default function TrustBitesAI() {
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                   </svg>
-                </div>
-                
+                </div>                
                 {/* Suggestions Dropdown */}
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
