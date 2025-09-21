@@ -3,23 +3,45 @@ import { NextRequest, NextResponse } from 'next/server';
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 const PLACES_API_BASE = "https://maps.googleapis.com/maps/api/place";
 
-import { formatPriceRange } from '@/lib/price-utils';
+// Simple price formatting function
+function formatPriceRange(priceLevel: number | undefined) {
+  if (priceLevel === undefined || priceLevel === null) {
+    return { symbol: '$$$', description: 'Price not available' };
+  }
+  const priceMap: { [key: number]: { symbol: string; description: string } } = {
+    0: { symbol: 'FREE', description: 'Free or very cheap' },
+    1: { symbol: '$', description: 'Inexpensive' },
+    2: { symbol: '$$', description: 'Moderate' },
+    3: { symbol: '$$$', description: 'Expensive' },
+    4: { symbol: '$$$$', description: 'Very expensive' }
+  };
+  return priceMap[priceLevel] || priceMap[2];
+}
 
 export async function GET(request: NextRequest) {
+  console.log('=== Restaurant Search API Called ===');
+  console.log('GOOGLE_API_KEY present:', !!GOOGLE_API_KEY);
+  
   const { searchParams } = new URL(request.url);
   const location = searchParams.get('location');
+  const lat = searchParams.get('lat');
+  const lng = searchParams.get('lng');
   const query = searchParams.get('query') || 'restaurant';
-  const radius = searchParams.get('radius') || '1000'; // 1km default
-  const maxPrice = searchParams.get('maxPrice'); // Optional price filter (0-4)
+  const radius = searchParams.get('radius') || '1000';
+  const maxPrice = searchParams.get('maxPrice');
+  
+  console.log('Request params:', { location, lat, lng, radius });
 
-  if (!location) {
+  if (!location && (!lat || !lng)) {
+    console.log('Missing location parameters');
     return NextResponse.json(
-      { error: 'Location parameter is required' },
+      { error: 'Location parameter or coordinates are required' },
       { status: 400 }
     );
   }
 
   if (!GOOGLE_API_KEY) {
+    console.log('Missing Google API key');
     return NextResponse.json(
       { error: 'Google Places API not configured' },
       { status: 500 }
@@ -27,40 +49,52 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // First, geocode the location to get coordinates
-    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json`;
-    const geocodeParams = new URLSearchParams({
-      address: location,
-      key: GOOGLE_API_KEY
-    });
+    let coordinates;
+    
+    if (lat && lng) {
+      coordinates = { lat: parseFloat(lat), lng: parseFloat(lng) };
+    } else {
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json`;
+      const geocodeParams = new URLSearchParams({
+        address: location!,
+        key: GOOGLE_API_KEY
+      });
 
-    const geocodeResponse = await fetch(`${geocodeUrl}?${geocodeParams}`);
-    const geocodeData = await geocodeResponse.json();
+      const geocodeResponse = await fetch(`${geocodeUrl}?${geocodeParams}`);
+      const geocodeData = await geocodeResponse.json();
 
-    if (geocodeData.status !== 'OK' || !geocodeData.results[0]) {
-      return NextResponse.json(
-        { error: 'Could not find location coordinates' },
-        { status: 404 }
-      );
+      if (geocodeData.status !== 'OK' || !geocodeData.results[0]) {
+        return NextResponse.json(
+          { error: 'Could not find location coordinates' },
+          { status: 404 }
+        );
+      }
+
+      coordinates = geocodeData.results[0].geometry.location;
     }
-
-    const { lat, lng } = geocodeData.results[0].geometry.location;
 
     // Search for nearby restaurants
     const searchUrl = `${PLACES_API_BASE}/nearbysearch/json`;
     const searchParams = new URLSearchParams({
-      location: `${lat},${lng}`,
+      location: `${coordinates.lat},${coordinates.lng}`,
       radius: radius,
       type: 'restaurant',
       key: GOOGLE_API_KEY
     });
+    
+    const fullUrl = `${searchUrl}?${searchParams}`;
+    console.log('Google Places API URL:', fullUrl.replace(GOOGLE_API_KEY, 'API_KEY_HIDDEN'));
 
-    const searchResponse = await fetch(`${searchUrl}?${searchParams}`);
+    const searchResponse = await fetch(fullUrl);
+    console.log('Google API response status:', searchResponse.status);
+    
     const searchData = await searchResponse.json();
+    console.log('Google API response:', { status: searchData.status, results_count: searchData.results?.length });
 
     if (searchData.status !== 'OK') {
+      console.log('Google API error details:', searchData);
       return NextResponse.json(
-        { error: `Google Places API error: ${searchData.status}` },
+        { error: `Google Places API error: ${searchData.status}`, details: searchData.error_message },
         { status: 500 }
       );
     }
@@ -117,8 +151,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       location: {
-        query: location,
-        coordinates: { lat, lng }
+        query: location || 'Current Location',
+        coordinates
       },
       restaurants: restaurants.slice(0, 20), // Limit to 20 restaurants
       total: restaurants.length
@@ -126,8 +160,14 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Restaurant search error:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      coordinates,
+      GOOGLE_API_KEY: GOOGLE_API_KEY ? 'Present' : 'Missing'
+    });
     return NextResponse.json(
-      { error: 'Failed to search restaurants' },
+      { error: 'Failed to search restaurants', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

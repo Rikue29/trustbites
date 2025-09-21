@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Title } from 'chart.js';
 import { Doughnut, Line } from 'react-chartjs-2';
 import GoogleMap from '@/components/GoogleMap';
@@ -68,50 +68,54 @@ export default function TrustBitesAI() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('Kuala Lumpur');
-  
-  // Dashboard data states
-  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
-  const [trendData, setTrendData] = useState<TrendData | null>(null);
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    searchRestaurants('Kuala Lumpur');
-    // Load dashboard data when component mounts
-    if (currentScreen === 'dashboard') {
-      loadDashboardData();
-    }
+    getUserLocation();
   }, []);
 
-  useEffect(() => {
-    // Load dashboard data when switching to dashboard
-    if (currentScreen === 'dashboard' && !dashboardSummary) {
-      loadDashboardData();
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(location);
+          searchNearbyRestaurants(location);
+        },
+        () => {
+          // Fallback to Kuala Lumpur if location denied
+          searchRestaurants('Kuala Lumpur');
+        }
+      );
+    } else {
+      searchRestaurants('Kuala Lumpur');
     }
-  }, [currentScreen]);
+  };
 
-  const loadDashboardData = async () => {
-    setIsLoadingDashboard(true);
+  const searchNearbyRestaurants = async (location: {lat: number, lng: number}) => {
     try {
-      // Fetch dashboard summary
-      const summaryResponse = await fetch('/api/dashboard/summary');
-      const summaryData = await summaryResponse.json();
+      const response = await fetch(`/api/restaurants/search?lat=${location.lat}&lng=${location.lng}&radius=5000`);
+      const data = await response.json();
       
-      if (summaryData.success) {
-        setDashboardSummary(summaryData.data);
-      }
-
-      // Fetch trend data
-      const trendsResponse = await fetch('/api/dashboard/trends?period=7');
-      const trendsData = await trendsResponse.json();
-      
-      if (trendsData.success) {
-        setTrendData(trendsData.data);
+      if (data.success) {
+        const restaurantsWithEmojis = data.restaurants.map((r: any) => ({
+          ...r,
+          emoji: getEmojiForCuisine(r.types || [r.cuisine]),
+          trustScore: Math.floor(Math.random() * 40) + 60
+        }));
+        setRestaurants(restaurantsWithEmojis);
+        setSelectedRestaurant(null);
       }
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setIsLoadingDashboard(false);
+      console.error('Error searching nearby restaurants:', error);
     }
   };
 
@@ -127,6 +131,8 @@ export default function TrustBitesAI() {
     if (typeStr.includes('thai')) return '🍜';
     if (typeStr.includes('bakery') || typeStr.includes('dessert')) return '🧁';
     if (typeStr.includes('bar') || typeStr.includes('pub')) return '🍺';
+    if (typeStr.includes('fast_food')) return '🍔';
+    if (typeStr.includes('meal_takeaway')) return '🥡';
     return '🍽️';
   };
 
@@ -156,9 +162,46 @@ export default function TrustBitesAI() {
     }
   };
 
+  const fetchSuggestions = (input: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (input.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        console.log('Fetching suggestions for:', input);
+        const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+        const data = await response.json();
+        
+        console.log('API response:', data);
+        
+        if (data.success && data.predictions) {
+          setSuggestions(data.predictions);
+          setShowSuggestions(true);
+        } else {
+          console.error('API error:', data.error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+  };
+
   const searchRestaurants = async (location?: string) => {
     const query = location || searchQuery.trim();
     if (!query) return;
+    
+    setShowSuggestions(false);
     
     try {
       const response = await fetch(`/api/restaurants/search?location=${encodeURIComponent(query)}&radius=5000`);
@@ -178,7 +221,6 @@ export default function TrustBitesAI() {
       console.error('Error searching restaurants:', error);
     }
   };
-
   // Generate chart data from real dashboard data
   const pieChartData = {
     labels: ['Genuine', 'Suspicious', 'Fake'],
@@ -225,7 +267,6 @@ export default function TrustBitesAI() {
       fill: true
     }]
   };
-
   const trendChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -293,7 +334,30 @@ export default function TrustBitesAI() {
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                   </svg>
-                </div>
+                </div>                
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={suggestion.place_id || index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                          </svg>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{suggestion.structured_formatting?.main_text || suggestion.description}</p>
+                            <p className="text-xs text-gray-500">{suggestion.structured_formatting?.secondary_text}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -329,15 +393,15 @@ export default function TrustBitesAI() {
         
         {/* Map View Screen */}
         {currentScreen === 'map' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6" style={{minHeight: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)'}}>
             {/* Map Section */}
             <div className="lg:col-span-3">
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden h-full relative">
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden relative" style={{height: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)'}}>
                 <GoogleMap 
                   restaurants={restaurants} 
                   onPlaceSelect={(restaurant) => {
                     setSelectedRestaurant(restaurant);
-                    setShowAnalysis(false);
+                    analyzeRestaurant(restaurant);
                   }}
                 />
                 
@@ -365,7 +429,7 @@ export default function TrustBitesAI() {
             {/* Restaurant Card */}
             <div className="lg:col-span-1">
               {selectedRestaurant ? (
-                <div className="bg-white rounded-2xl shadow-lg p-6 h-full">
+                <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col" style={{height: showAnalysis ? 'calc(100vh - 50px)' : 'calc(100vh - 100px)', minHeight: showAnalysis ? '900px' : '800px'}}>
                   <div className="text-center mb-6">
                     <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden">
                       {selectedRestaurant.photos && selectedRestaurant.photos[0] ? (
@@ -392,43 +456,80 @@ export default function TrustBitesAI() {
                     <p className="text-gray-500 text-sm">{selectedRestaurant.address}</p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="mb-6">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-gray-900">
-                        {selectedRestaurant.priceRange?.range || 'N/A'}
-                      </div>
+                      <div className="text-lg font-bold text-gray-900">$$$</div>
                       <div className="text-xs text-gray-500">Price Range</div>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <div className="text-lg font-bold text-gray-900">25min</div>
-                      <div className="text-xs text-gray-500">Delivery</div>
                     </div>
                   </div>
                   
-                  <button 
-                    onClick={analyzeReviews}
-                    disabled={isAnalyzing}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
-                  >
-                    <span className="flex items-center justify-center space-x-2">
-                      {isAnalyzing ? (
-                        <>
-                          <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                  <div className="flex-1 overflow-y-auto bg-white">
+                    {isAnalyzing && (
+                      <div className="bg-blue-50 rounded-xl p-4 mb-4">
+                        <div className="flex items-center justify-center space-x-2">
+                          <svg className="animate-spin w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          <span>Analyzing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                          </svg>
-                          <span>Analyze Reviews with AI</span>
-                        </>
-                      )}
-                    </span>
-                  </button>
+                          <span className="text-blue-600 font-medium">Analyzing reviews...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Analysis Results */}
+                    {showAnalysis && (
+                      <div className="bg-gray-50 rounded-xl p-4 overflow-hidden">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-base font-bold text-gray-900">AI Analysis Results</h4>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        </div>
+                        
+                        {/* Trust Score */}
+                        <div className="text-center mb-4">
+                          <div className="w-20 h-20 mx-auto mb-3">
+                            <Doughnut data={pieChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                          </div>
+                          <div className="flex items-center justify-center space-x-3 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 p-0.5">
+                              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-gray-900">{selectedRestaurant.trustScore}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Trust Score</p>
+                              <p className={`text-xs ${
+                                selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 80 ? 'text-green-600' :
+                                selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 60 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 80 ? 'Highly Trustworthy' :
+                                 selectedRestaurant.trustScore && selectedRestaurant.trustScore >= 60 ? 'Moderately Trustworthy' :
+                                 'Low Trust'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="text-center">
+                              <div className="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
+                              <div className="font-medium">Genuine</div>
+                              <div className="text-gray-500">60%</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="w-2 h-2 bg-yellow-500 rounded-full mx-auto mb-1"></div>
+                              <div className="font-medium">Suspicious</div>
+                              <div className="text-gray-500">25%</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
+                              <div className="font-medium">Fake</div>
+                              <div className="text-gray-500">15%</div>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-lg p-6 h-full flex items-center justify-center">
@@ -438,288 +539,7 @@ export default function TrustBitesAI() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                     <p className="text-lg font-medium mb-2">Select a Restaurant</p>
-                    <p className="text-sm">Click on a restaurant from the list to view details and analyze reviews</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Analysis Results */}
-              {showAnalysis && selectedRestaurant && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-2">
-                      <h4 className="text-lg font-bold text-gray-900">AI Analysis Results</h4>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></div>
-                        Bedrock AI
-                      </span>
-                    </div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  </div>
-                  
-                  {/* Trust Score Gauge */}
-                  <div className="text-center mb-6">
-                    <div className="relative w-32 h-32 mx-auto mb-4">
-                      <div className="w-full h-full rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 p-3">
-                        <div className="w-full h-full bg-white rounded-full flex items-center justify-center shadow-inner">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-900">
-                              {reviews.length > 0 
-                                ? Math.round(100 - (reviews.filter(r => 
-                                    r.classification === 'fake' || 
-                                    r.classification === 'suspicious' || 
-                                    (!r.classification && r.isFake)
-                                  ).length / reviews.length) * 100)
-                                : (selectedRestaurant?.trustScore || 85)
-                              }
-                            </div>
-                            <div className="text-xs text-gray-500 font-medium">Trust Score</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <p className={`text-sm font-medium ${
-                      reviews.length > 0 
-                        ? (100 - (reviews.filter(r => 
-                            r.classification === 'fake' || 
-                            r.classification === 'suspicious' || 
-                            (!r.classification && r.isFake)
-                          ).length / reviews.length) * 100) >= 80 ? 'text-green-600' :
-                          (100 - (reviews.filter(r => 
-                            r.classification === 'fake' || 
-                            r.classification === 'suspicious' || 
-                            (!r.classification && r.isFake)
-                          ).length / reviews.length) * 100) >= 60 ? 'text-yellow-600' :
-                          'text-red-600'
-                        : selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 80 ? 'text-green-600' :
-                          selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 60 ? 'text-yellow-600' :
-                          'text-red-600'
-                    }`}>
-                      {reviews.length > 0 
-                        ? (100 - (reviews.filter(r => 
-                            r.classification === 'fake' || 
-                            r.classification === 'suspicious' || 
-                            (!r.classification && r.isFake)
-                          ).length / reviews.length) * 100) >= 80 ? 'Highly Trustworthy' :
-                          (100 - (reviews.filter(r => 
-                            r.classification === 'fake' || 
-                            r.classification === 'suspicious' || 
-                            (!r.classification && r.isFake)
-                          ).length / reviews.length) * 100) >= 60 ? 'Moderately Trustworthy' :
-                          'Low Trust'
-                        : selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 80 ? 'Highly Trustworthy' :
-                          selectedRestaurant?.trustScore && selectedRestaurant.trustScore >= 60 ? 'Moderately Trustworthy' :
-                          'Low Trust'
-                      }
-                    </p>
-                  </div>
-
-                  {/* Pie Chart */}
-                  <div className="mb-6">
-                    <h5 className="font-semibold text-gray-900 mb-3">Review Distribution</h5>
-                    <div className="h-48 mb-4">
-                      {reviews.length > 0 ? (
-                        <Doughnut 
-                          data={{
-                            labels: ['Genuine', 'Suspicious', 'Fake'],
-                            datasets: [{
-                              data: [
-                                reviews.filter(r => r.classification === 'genuine' || (!r.classification && !r.isFake)).length,
-                                reviews.filter(r => r.classification === 'suspicious' || (!r.classification && r.isFake && r.confidence < 0.8)).length,
-                                reviews.filter(r => r.classification === 'fake' || (!r.classification && r.isFake && r.confidence >= 0.8)).length
-                              ],
-                              backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
-                              borderWidth: 0
-                            }]
-                          }} 
-                          options={{ 
-                            responsive: true, 
-                            maintainAspectRatio: false, 
-                            plugins: { 
-                              legend: { display: false },
-                              tooltip: {
-                                callbacks: {
-                                  label: function(context: any) {
-                                    const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
-                                    const value = context.parsed;
-                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                    return `${context.label}: ${percentage}% (${value} reviews)`;
-                                  }
-                                }
-                              }
-                            } 
-                          }} 
-                        />
-                      ) : (
-                        <Doughnut 
-                          data={pieChartData} 
-                          options={pieChartOptions} 
-                        />
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="text-center">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-1"></div>
-                        <div className="font-medium">Genuine</div>
-                        <div className="text-gray-500">
-                          {reviews.length > 0 
-                            ? `${Math.round((reviews.filter(r => r.classification === 'genuine' || (!r.classification && !r.isFake)).length / reviews.length) * 100)}%`
-                            : '60%'
-                          }
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="w-3 h-3 bg-yellow-500 rounded-full mx-auto mb-1"></div>
-                        <div className="font-medium">Suspicious</div>
-                        <div className="text-gray-500">
-                          {reviews.length > 0 
-                            ? `${Math.round((reviews.filter(r => r.classification === 'suspicious' || (!r.classification && r.isFake && r.confidence < 0.8)).length / reviews.length) * 100)}%`
-                            : '25%'
-                          }
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-1"></div>
-                        <div className="font-medium">Fake</div>
-                        <div className="text-gray-500">
-                          {reviews.length > 0 
-                            ? `${Math.round((reviews.filter(r => r.classification === 'fake' || (!r.classification && r.isFake && r.confidence >= 0.8)).length / reviews.length) * 100)}%`
-                            : '15%'
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Review List */}
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="font-semibold text-gray-900">Recent Reviews</h5>
-                      {reviews.length > 0 && (
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                          {reviews.length} reviews analyzed by AI
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                      {reviews.map((review, index) => (
-                        <div key={review.reviewId || index} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                          {/* Header with classification and confidence */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                                // Use new classification if available, otherwise fall back to old logic
-                                review.classification === 'genuine' || (!review.classification && !review.isFake) ? 'bg-green-100 text-green-800 border-green-200' :
-                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                                'bg-red-100 text-red-800 border-red-200'
-                              }`}>
-                                {review.classification === 'genuine' || (!review.classification && !review.isFake) ? '✅ Genuine' : 
-                                 review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? '⚠️ Suspicious' :
-                                 '❌ Fake'}
-                              </span>
-                              <span className={`text-xs font-medium ${
-                                review.classification === 'genuine' || (!review.classification && !review.isFake) ? 'text-green-600' :
-                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8) ? 'text-yellow-600' :
-                                'text-red-600'
-                              }`}>
-                                {Math.round(review.confidence * 100)}% confidence
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Author and rating info */}
-                          {review.authorName && (
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs font-medium text-gray-600">{review.authorName}</span>
-                                {review.rating && (
-                                  <div className="flex items-center space-x-1">
-                                    <span className="text-yellow-400">⭐</span>
-                                    <span className="text-xs text-gray-600">{review.rating}</span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-3 text-xs text-gray-500">
-                                <span className="flex items-center space-x-1">
-                                  <span>😊</span>
-                                  <span>{review.sentiment}</span>
-                                </span>
-                                {review.languageConfidence && (
-                                  <span className="flex items-center space-x-1">
-                                    <span>🗣️</span>
-                                    <span>{Math.round(review.languageConfidence * 100)}%</span>
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Review text */}
-                          <p className="text-sm text-gray-700 leading-relaxed mb-3">{review.reviewText}</p>
-
-                          {/* AI Analysis Explanation */}
-                          {review.explanation && (
-                            <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                              <div className="text-xs font-medium text-blue-800 mb-1 flex items-center space-x-1">
-                                <span>🤖</span>
-                                <span>AI Analysis:</span>
-                              </div>
-                              <div className="text-xs text-blue-700 leading-relaxed">
-                                {review.explanation}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Detection reasons for fake and suspicious reviews */}
-                          {(review.classification === 'fake' || review.classification === 'suspicious' || 
-                            (!review.classification && review.isFake)) && (review.reasons || review.reason) && (
-                            <div className={`p-3 rounded-lg border ${
-                              review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
-                                ? 'bg-yellow-50 border-yellow-100'
-                                : 'bg-red-50 border-red-100'
-                            }`}>
-                              <div className={`text-xs font-medium mb-2 flex items-center space-x-1 ${
-                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
-                                  ? 'text-yellow-800'
-                                  : 'text-red-800'
-                              }`}>
-                                <span>⚠️</span>
-                                <span>Detection Indicators:</span>
-                              </div>
-                              <div className={`text-xs ${
-                                review.classification === 'suspicious' || (!review.classification && review.isFake && review.confidence < 0.8)
-                                  ? 'text-yellow-700'
-                                  : 'text-red-700'
-                              }`}>
-                                {Array.isArray(review.reasons) 
-                                  ? (
-                                    <ul className="list-disc list-inside space-y-1">
-                                      {review.reasons.map((reason, idx) => (
-                                        <li key={idx}>{reason.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>
-                                      ))}
-                                    </ul>
-                                  )
-                                  : review.reason
-                                }
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Assessment for genuine reviews */}
-                          {(review.classification === 'genuine' || (!review.classification && !review.isFake)) && (
-                            <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
-                              <div className="text-xs font-medium text-green-800 mb-1 flex items-center space-x-1">
-                                <span>✅</span>
-                                <span>Assessment:</span>
-                              </div>
-                              <div className="text-xs text-green-700">
-                                This review appears to be written by a real customer with authentic experiences.
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-sm">Click on a restaurant marker on the map to view details and analyze reviews</p>
                   </div>
                 </div>
               )}
@@ -730,24 +550,6 @@ export default function TrustBitesAI() {
         {/* Dashboard Screen */}
         {currentScreen === 'dashboard' && (
           <div>
-            {/* Dashboard Header with Refresh Button */}
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">AI Analytics Dashboard</h2>
-                <p className="text-gray-600">Real-time fake review detection insights</p>
-              </div>
-              <button
-                onClick={loadDashboardData}
-                disabled={isLoadingDashboard}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
-              >
-                <svg className={`w-4 h-4 ${isLoadingDashboard ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
-                <span>{isLoadingDashboard ? 'Refreshing...' : 'Refresh Data'}</span>
-              </button>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
               {/* Key Metrics */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -759,105 +561,46 @@ export default function TrustBitesAI() {
                     </svg>
                   </div>
                 </div>
-                
-                {isLoadingDashboard ? (
-                  <div className="space-y-4 animate-pulse">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <div className="h-4 bg-gray-200 rounded w-24"></div>
-                        <div className="h-4 bg-gray-200 rounded w-12"></div>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2"></div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">Average Trust Score</span>
+                      <span className="font-semibold">74%</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      {[1,2,3].map(i => (
-                        <div key={i}>
-                          <div className="h-8 bg-gray-200 rounded mb-1"></div>
-                          <div className="h-3 bg-gray-200 rounded"></div>
-                        </div>
-                      ))}
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-500 h-2 rounded-full" style={{width: '74%'}}></div>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600">Average Trust Score</span>
-                        <span className="font-semibold">
-                          {dashboardSummary 
-                            ? `${Math.round(100 - dashboardSummary.fakeReviewPercentage)}%`
-                            : '74%'
-                          }
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full" 
-                          style={{
-                            width: dashboardSummary 
-                              ? `${Math.round(100 - dashboardSummary.fakeReviewPercentage)}%`
-                              : '74%'
-                          }}
-                        ></div>
-                      </div>
+                      <div className="text-2xl font-bold text-green-600">1,247</div>
+                      <div className="text-xs text-gray-500">Genuine</div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div>
-                        <div className="text-2xl font-bold text-green-600">
-                          {dashboardSummary ? dashboardSummary.genuineReviewsCount.toLocaleString() : '1,247'}
-                        </div>
-                        <div className="text-xs text-gray-500">Genuine</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-yellow-600">
-                          {dashboardSummary 
-                            ? Math.max(0, dashboardSummary.totalReviews - dashboardSummary.genuineReviewsCount - dashboardSummary.totalFakeReviews).toLocaleString()
-                            : '423'
-                          }
-                        </div>
-                        <div className="text-xs text-gray-500">Suspicious</div>
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-red-600">
-                          {dashboardSummary ? dashboardSummary.totalFakeReviews.toLocaleString() : '156'}
-                        </div>
-                        <div className="text-xs text-gray-500">Fake</div>
-                      </div>
+                    <div>
+                      <div className="text-2xl font-bold text-yellow-600">423</div>
+                      <div className="text-xs text-gray-500">Suspicious</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-600">156</div>
+                      <div className="text-xs text-gray-500">Fake</div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Trend Chart */}
               <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-bold text-gray-900">Fake Review Trends</h3>
-                    {dashboardSummary && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
-                        Live Data
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Fake Review Trends</h3>
                   <select className="text-sm border border-gray-300 rounded-lg px-3 py-1">
                     <option>Last 7 days</option>
                     <option>Last 30 days</option>
                     <option>Last 90 days</option>
                   </select>
                 </div>
-                {isLoadingDashboard ? (
-                  <div className="h-48 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center">
-                    <div className="text-gray-400">Loading trend data...</div>
-                  </div>
-                ) : (
-                  <div className="h-48">
-                    <Line 
-                      data={trendChartData} 
-                      options={trendChartOptions} 
-                    />
-                  </div>
-                )}
+                <div className="h-48">
+                  <Line data={trendChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                </div>
               </div>
             </div>
 
@@ -962,7 +705,92 @@ export default function TrustBitesAI() {
             </div>
           </div>
         )}
+
+        {/* Recent Reviews Section */}
+        {currentScreen === 'map' && selectedRestaurant && showAnalysis && (
+          <div ref={reviewsRef} className="mt-6">
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Reviews Analysis</h3>
+              <div className="space-y-4">
+                {reviews.map((review, index) => (
+                  <div key={review.reviewId || index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        review.isFake === false ? 'bg-green-100 text-green-700' :
+                        review.confidence > 0.7 ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {review.isFake === false ? '✅ Genuine' : review.confidence > 0.7 ? '❌ Fake' : '⚠️ Suspicious'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {Math.round(review.confidence * 100)}%
+                      </span>
+                    </div>
+                    {review.authorName && (
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-medium text-gray-700">{review.authorName}</span>
+                        {review.rating && (
+                          <div className="flex items-center space-x-1">
+                            <span className="text-yellow-400">⭐</span>
+                            <span className="text-sm text-gray-600">{review.rating}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-700 leading-relaxed mb-2">{review.reviewText}</p>
+                    {review.reason && (
+                      <p className="text-xs text-gray-500 italic">Reason: {review.reason}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold">TrustBites AI</h3>
+              </div>
+              <p className="text-gray-400 text-sm">AI-powered fake review detection for restaurants. Make informed dining decisions with confidence.</p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Features</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Real-time review analysis</li>
+                <li>Trust score calculation</li>
+                <li>Location-based search</li>
+                <li>Interactive maps</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Technology</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>AWS Comprehend AI</li>
+                <li>Google Places API</li>
+                <li>Next.js & React</li>
+                <li>Real-time analytics</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+            <p className="text-gray-400 text-sm">&copy; 2024 TrustBites AI. Powered by advanced AI technology.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
