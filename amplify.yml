@@ -10,7 +10,7 @@ applications:
         build:
           commands:
             - echo "Building TrustBites application..."
-            - npm run build
+            - npm run build:prod
       artifacts:
         baseDirectory: .next
         files:

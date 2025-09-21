@@ -38,16 +38,19 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   
-  // Webpack configuration for AWS SDK
-  webpack: (config, { isServer }) => {
-    // AWS SDK optimization
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
+  // Webpack configuration for AWS SDK (only when not using Turbopack)
+  webpack: (config, { isServer, dev }) => {
+    // Only apply webpack config when not using Turbopack
+    if (!dev || !process.env.TURBOPACK) {
+      // AWS SDK optimization
+      if (!isServer) {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          fs: false,
+          net: false,
+          tls: false,
+        };
+      }
     }
     
     return config;
